@@ -12,7 +12,36 @@ app.use(express.static(__dirname + '/public'));
 
 const ROWS = 15;
 const COLS = 15;
-const TILE = { EMPTY: 0, SOLID_BLOCK: 1, SOFT_BLOCK: 2, BOMB: 3, ITEM_BOMB: 4, ITEM_RANGE: 5 };
+
+// 타일 타입 정의
+const TILE = {
+  EMPTY: 0,
+  SOLID_BLOCK: 1, // 파괴 불가 (철조망/바위)
+  SOFT_BLOCK: 2,  // 파괴 가능 (텐트/나무상자)
+  BOMB: 3,
+  ITEM_BOMB: 4,
+  ITEM_RANGE: 5
+};
+
+// ⛺ [캠핑장 고정 맵 패턴 (15x15)]
+// 1: 철조망/바위 (못 부숨), 2: 텐트/상자 (부술 수 있음), 0: 빈 공간
+const CAMP_MAP_LAYOUT = [
+  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  [1, 0, 0, 2, 2, 0, 1, 1, 1, 0, 2, 2, 0, 0, 1],
+  [1, 0, 1, 2, 1, 2, 0, 1, 0, 2, 1, 2, 1, 0, 1],
+  [1, 2, 2, 0, 2, 2, 2, 1, 2, 2, 2, 0, 2, 2, 1],
+  [1, 2, 1, 2, 1, 0, 2, 1, 2, 0, 1, 2, 1, 2, 1],
+  [1, 0, 2, 2, 2, 2, 0, 1, 0, 2, 2, 2, 2, 0, 1],
+  [1, 1, 0, 1, 0, 1, 2, 1, 2, 1, 0, 1, 0, 1, 1],
+  [1, 1, 1, 2, 2, 2, 0, 1, 0, 2, 2, 2, 1, 1, 1], // 7열(중앙) 철조망 라인
+  [1, 1, 0, 1, 0, 1, 2, 1, 2, 1, 0, 1, 0, 1, 1],
+  [1, 0, 2, 2, 2, 2, 0, 1, 0, 2, 2, 2, 2, 0, 1],
+  [1, 2, 1, 2, 1, 0, 2, 1, 2, 0, 1, 2, 1, 2, 1],
+  [1, 2, 2, 0, 2, 2, 2, 1, 2, 2, 2, 0, 2, 2, 1],
+  [1, 0, 1, 2, 1, 2, 0, 1, 0, 2, 1, 2, 1, 0, 1],
+  [1, 0, 0, 2, 2, 0, 1, 1, 1, 0, 2, 2, 0, 0, 1],
+  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+];
 
 let map = [];
 let players = {};
@@ -20,20 +49,9 @@ let bombs = [];
 let explosions = [];
 let isGameOver = false;
 
+// 고정된 캠핑장 맵 로드
 function initMap() {
-  map = [];
-  for (let r = 0; r < ROWS; r++) {
-    map[r] = [];
-    for (let c = 0; c < COLS; c++) {
-      if (r === 0 || r === ROWS - 1 || c === 0 || c === COLS - 1 || (r % 2 === 0 && c % 2 === 0)) {
-        map[r][c] = TILE.SOLID_BLOCK;
-      } else if ((r <= 2 && c <= 2) || (r >= ROWS - 3 && c >= COLS - 3)) {
-        map[r][c] = TILE.EMPTY;
-      } else {
-        map[r][c] = Math.random() < 0.6 ? TILE.SOFT_BLOCK : TILE.EMPTY;
-      }
-    }
-  }
+  map = JSON.parse(JSON.stringify(CAMP_MAP_LAYOUT));
 }
 
 function resetGameRound() {
@@ -90,7 +108,6 @@ io.on('connection', (socket) => {
     const p = players[socket.id];
     if (!p || !p.isAlive) return;
 
-    // 과도한 속도 해킹/연속 신호 방지를 위한 서버 간격 체크 (120ms)
     const now = Date.now();
     if (now - p.lastMoveTime < 100) return;
     p.lastMoveTime = now;
