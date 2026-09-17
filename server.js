@@ -50,6 +50,7 @@ function resetGameRound() {
     p.bombRange = 1;
     p.activeBombs = 0;
     p.isAlive = true;
+    p.lastMoveTime = 0;
   });
 
   io.emit('gameRestarted');
@@ -77,7 +78,8 @@ io.on('connection', (socket) => {
     maxBombs: 1,
     bombRange: 1,
     activeBombs: 0,
-    isAlive: true
+    isAlive: true,
+    lastMoveTime: 0
   };
 
   socket.emit('init', { id: socket.id, map, players });
@@ -87,6 +89,11 @@ io.on('connection', (socket) => {
     if (isGameOver) return;
     const p = players[socket.id];
     if (!p || !p.isAlive) return;
+
+    // 과도한 속도 해킹/연속 신호 방지를 위한 서버 간격 체크 (120ms)
+    const now = Date.now();
+    if (now - p.lastMoveTime < 100) return;
+    p.lastMoveTime = now;
 
     let nx = p.x;
     let ny = p.y;
@@ -131,7 +138,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 다시하기 요청 수신
   socket.on('restartGame', () => {
     resetGameRound();
   });
