@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Crazy Arcade Web Game</title>
+  <title>Crazy Arcade Multi - Socket.io</title>
   <style>
     body {
       background-color: #1a1a1a;
@@ -17,9 +17,16 @@
       margin: 0;
     }
     h1 { margin-bottom: 10px; }
-    #stats {
+    #status {
       margin-bottom: 10px;
       font-size: 16px;
+      font-weight: bold;
+      color: #f39c12;
+    }
+    #player-info {
+      margin-bottom: 15px;
+      font-size: 14px;
+      color: #bdc3c7;
     }
     #game-container {
       position: relative;
@@ -34,21 +41,24 @@
 </head>
 <body>
 
-  <h1>Web Crazy Arcade</h1>
-  <div id="stats">
-    <span>방향키: 이동 | Space: 물풍선 설치</span><br>
-    <span id="player-info">최대 물풍선: 1 | 폭발 사거리: 1</span>
+  <h1>Web Crazy Arcade (2P Multi)</h1>
+  <div id="status">서버 연결 중...</div>
+  <div id="player-info">
+    <span>조작법: 방향키(이동) / Space(물풍선)</span>
   </div>
   <div id="game-container">
     <canvas id="gameCanvas" width="600" height="600"></canvas>
   </div>
 
+  <!-- 백엔드 Socket.io 라이브러리 로드 -->
+  <script src="/socket.io/socket.io.js"></script>
   <script>
+    const socket = io();
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-    const playerInfo = document.getElementById('player-info');
+    const statusDiv = document.getElementById('status');
+    const playerInfoDiv = document.getElementById('player-info');
 
-    // 게임 맵 설정 (15x15)
     const ROWS = 15;
     const COLS = 15;
     const TILE_SIZE = canvas.width / COLS;
@@ -56,222 +66,158 @@
     // 타일 타입 정의
     const TILE = {
       EMPTY: 0,
-      SOLID_BLOCK: 1, // 파괴 불가능한 벽
-      SOFT_BLOCK: 2,  // 파괴 가능한 상자
+      SOLID_BLOCK: 1,
+      SOFT_BLOCK: 2,
       BOMB: 3,
-      ITEM_BOMB: 4,   // 물풍선 증가 아이템
-      ITEM_RANGE: 5   // 사거리 증가 아이템
+      ITEM_BOMB: 4,
+      ITEM_RANGE: 5
     };
 
-    let map = [];
-    let bombs = [];
-    let explosions = [];
-
-    // 플레이어 정보
-    const player = {
-      x: 1,
-      y: 1,
-      maxBombs: 1,
-      bombRange: 1,
-      activeBombs: 0
+    let myId = null;
+    let gameState = {
+      map: [],
+      players: {},
+      explosions: []
     };
 
-    // 키 입력 상태
-    const keys = {};
+    // 소켓 이벤트 처리
+    socket.on('connect', () => {
+      statusDiv.innerText = '서버에 연결되었습니다. 다른 플레이어를 기다리는 중...';
+    });
 
-    // 맵 초기화
-    function initMap() {
-      for (let r = 0; r < ROWS; r++) {
-        map[r] = [];
-        for (let c = 0; c < COLS; c++) {
-          // 외곽 및 격자 테두리는 파괴 불가 테두리
-          if (r === 0 || r === ROWS - 1 || c === 0 || c === COLS - 1 || (r % 2 === 0 && c % 2 === 0)) {
-            map[r][c] = TILE.SOLID_BLOCK;
-          } 
-          // 스폰 지점 주변 빈 공간 확보
-          else if ((r <= 2 && c <= 2)) {
-            map[r][c] = TILE.EMPTY;
-          } 
-          // 나머지 공간 무작위로 파괴 가능한 벽 배치
-          else {
-            map[r][c] = Math.random() < 0.6 ? TILE.SOFT_BLOCK : TILE.EMPTY;
-          }
-        }
+    socket.on('full', (msg) => {
+      alert(msg);
+      statusDiv.innerText = '방이 가득 차서 접속할 수 없습니다.';
+    });
+
+    socket.on('init', (data) => {
+      myId = data.id;
+      gameState.map = data.map;
+      gameState.players = data.players;
+      updateStatus();
+    });
+
+    socket.on('playerJoined', (player) => {
+      gameState.players[player.id] = player;
+      updateStatus();
+    });
+
+    socket.on('playerLeft', (id) => {
+      delete gameState.players[id];
+      updateStatus();
+      statusDiv.innerText = '상대방이 나가 대기 상태로 전환되었습니다.';
+    });
+
+    // 서버 측 메인 루프에서 전송하는 60FPS 상태 수신
+    socket.on('gameState', (state) => {
+      gameState = state;
+      updateStatus();
+      draw();
+    });
+
+    socket.on('gameOver', (data) => {
+      setTimeout(() => {
+        alert(`게임 종료! 승자: ${data.winner}`);
+      }, 100);
+    });
+
+    function updateStatus() {
+      const pCount = Object.keys(gameState.players).length;
+      const me = gameState.players[myId];
+
+      if (me) {
+        statusDiv.innerText = `접속 완료 (당신: Player ${me.pNum}) | 접속자 수: ${pCount}/2`;
+        playerInfoDiv.innerText = `내 스탯 - 최대 물풍선: ${me.maxBombs} | 폭발 사거리: ${me.bombRange} | 상태: ${me.isAlive ? '생존' : '사망'}`;
       }
     }
 
-    // 물풍선 설치
-    function placeBomb() {
-      if (player.activeBombs >= player.maxBombs) return;
-      if (map[player.y][player.x] === TILE.BOMB) return;
-
-      const bomb = {
-        x: player.x,
-        y: player.y,
-        timer: 3000, // 3초 뒤 폭발
-        createdAt: Date.now()
-      };
-
-      bombs.push(bomb);
-      map[player.y][player.x] = TILE.BOMB;
-      player.activeBombs++;
-    }
-
-    // 물풍선 폭발 처리
-    function explodeBomb(bomb) {
-      map[bomb.y][bomb.x] = TILE.EMPTY;
-      player.activeBombs = Math.max(0, player.activeBombs - 1);
-
-      const dirs = [[0,0], [1,0], [-1,0], [0,1], [0,-1]];
-      
-      dirs.forEach(([dx, dy]) => {
-        for (let i = (dx === 0 && dy === 0 ? 0 : 1); i <= player.bombRange; i++) {
-          const nx = bomb.x + dx * i;
-          const ny = bomb.y + dy * i;
-
-          if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) break;
-
-          // 단단한 벽은 폭발 차단
-          if (map[ny][nx] === TILE.SOLID_BLOCK) break;
-
-          explosions.push({ x: nx, y: ny, createdAt: Date.now() });
-
-          // 부수어지는 벽 처리 및 아이템 드랍
-          if (map[ny][nx] === TILE.SOFT_BLOCK) {
-            const rand = Math.random();
-            if (rand < 0.3) map[ny][nx] = TILE.ITEM_BOMB;
-            else if (rand < 0.6) map[ny][nx] = TILE.ITEM_RANGE;
-            else map[ny][nx] = TILE.EMPTY;
-            break;
-          }
-
-          // 플레이어와 폭발 충돌 검사
-          if (nx === player.x && ny === player.y) {
-            alert('게임 오버! 물풍풍선에 맞았습니다.');
-            resetGame();
-            return;
-          }
-        }
-      });
-    }
-
-    function resetGame() {
-      player.x = 1;
-      player.y = 1;
-      player.maxBombs = 1;
-      player.bombRange = 1;
-      player.activeBombs = 0;
-      bombs = [];
-      explosions = [];
-      initMap();
-    }
-
-    // 업데이트 로직
-    function update() {
-      const now = Date.now();
-
-      // 폭발 유효기간 처리 (500ms 동안 시각 효과)
-      explosions = explosions.filter(exp => now - exp.createdAt < 500);
-
-      // 타이머가 다 된 폭탄 터뜨리기
-      bombs = bombs.filter(bomb => {
-        if (now - bomb.createdAt >= bomb.timer) {
-          explodeBomb(bomb);
-          return false;
-        }
-        return true;
-      });
-
-      // 아이템 획득
-      const currentTile = map[player.y][player.x];
-      if (currentTile === TILE.ITEM_BOMB) {
-        player.maxBombs++;
-        map[player.y][player.x] = TILE.EMPTY;
-      } else if (currentTile === TILE.ITEM_RANGE) {
-        player.bombRange++;
-        map[player.y][player.x] = TILE.EMPTY;
+    // 키 입력 처리 -> 서버로 보냄
+    const keysPressed = {};
+    window.addEventListener('keydown', (e) => {
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
+        e.preventDefault(); // 스크롤 방지
       }
-
-      playerInfo.innerText = `최대 물풍선: ${player.maxBombs} | 폭발 사거리: ${player.bombRange}`;
-    }
-
-    // 렌더링 (그리기)
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // 맵 그리기
-      for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-          const type = map[r][c];
-          if (type === TILE.SOLID_BLOCK) {
-            ctx.fillStyle = '#2C3E50';
-            ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-          } else if (type === TILE.SOFT_BLOCK) {
-            ctx.fillStyle = '#D35400';
-            ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE - 2, TILE_SIZE - 2);
-          } else if (type === TILE.BOMB) {
-            ctx.fillStyle = '#2980B9';
-            ctx.beginPath();
-            ctx.arc(c * TILE_SIZE + TILE_SIZE/2, r * TILE_SIZE + TILE_SIZE/2, TILE_SIZE/2.5, 0, Math.PI * 2);
-            ctx.fill();
-          } else if (type === TILE.ITEM_BOMB) {
-            ctx.fillStyle = '#F1C40F';
-            ctx.fillRect(c * TILE_SIZE + 10, r * TILE_SIZE + 10, TILE_SIZE - 20, TILE_SIZE - 20);
-          } else if (type === TILE.ITEM_RANGE) {
-            ctx.fillStyle = '#E67E22';
-            ctx.fillRect(c * TILE_SIZE + 10, r * TILE_SIZE + 10, TILE_SIZE - 20, TILE_SIZE - 20);
-          }
-        }
-      }
-
-      // 폭발 효과 그리기
-      ctx.fillStyle = '#E74C3C';
-      explosions.forEach(exp => {
-        ctx.fillRect(exp.x * TILE_SIZE, exp.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-      });
-
-      // 캐릭터 그리기
-      ctx.fillStyle = '#2ECC71';
-      ctx.beginPath();
-      ctx.arc(player.x * TILE_SIZE + TILE_SIZE/2, player.y * TILE_SIZE + TILE_SIZE/2, TILE_SIZE/3, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // 키 입력 처리
-    window.addEventListener('keydown', e => {
-      let newX = player.x;
-      let newY = player.y;
-
-      if (e.key === 'ArrowUp') newY--;
-      if (e.key === 'ArrowDown') newY++;
-      if (e.key === 'ArrowLeft') newX--;
-      if (e.key === 'ArrowRight') newX++;
 
       if (e.key === ' ') {
-        placeBomb();
+        socket.emit('placeBomb');
+        return;
       }
 
-      // 이동 가능 위치 체크
-      if (newX !== player.x || newY !== player.y) {
-        if (newX >= 0 && newX < COLS && newY >= 0 && newY < ROWS) {
-          const target = map[newY][newX];
-          if (target !== TILE.SOLID_BLOCK && target !== TILE.SOFT_BLOCK && target !== TILE.BOMB) {
-            player.x = newX;
-            player.y = newY;
-          }
-        }
+      if (!keysPressed[e.key]) {
+        keysPressed[e.key] = true;
+        sendMoveSignal(e.key);
       }
     });
 
-    // 게임 루프
-    function gameLoop() {
-      update();
-      draw();
-      requestAnimationFrame(gameLoop);
+    window.addEventListener('keyup', (e) => {
+      delete keysPressed[e.key];
+    });
+
+    function sendMoveSignal(key) {
+      if (key === 'ArrowUp') socket.emit('move', 'up');
+      if (key === 'ArrowDown') socket.emit('move', 'down');
+      if (key === 'ArrowLeft') socket.emit('move', 'left');
+      if (key === 'ArrowRight') socket.emit('move', 'right');
     }
 
-    initMap();
-    gameLoop();
+    // 서버 상태에 따라 화면을 그리는 함수
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 1. 맵 및 벽, 아이템 그리기
+      if (gameState.map && gameState.map.length > 0) {
+        for (let r = 0; r < ROWS; r++) {
+          for (let c = 0; c < COLS; c++) {
+            const type = gameState.map[r][c];
+
+            if (type === TILE.SOLID_BLOCK) {
+              ctx.fillStyle = '#2C3E50';
+              ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            } else if (type === TILE.SOFT_BLOCK) {
+              ctx.fillStyle = '#D35400';
+              ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE - 2, TILE_SIZE - 2);
+            } else if (type === TILE.BOMB) {
+              ctx.fillStyle = '#2980B9';
+              ctx.beginPath();
+              ctx.arc(c * TILE_SIZE + TILE_SIZE / 2, r * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE / 2.5, 0, Math.PI * 2);
+              ctx.fill();
+            } else if (type === TILE.ITEM_BOMB) {
+              ctx.fillStyle = '#F1C40F';
+              ctx.fillRect(c * TILE_SIZE + 10, r * TILE_SIZE + 10, TILE_SIZE - 20, TILE_SIZE - 20);
+            } else if (type === TILE.ITEM_RANGE) {
+              ctx.fillStyle = '#E67E22';
+              ctx.fillRect(c * TILE_SIZE + 10, r * TILE_SIZE + 10, TILE_SIZE - 20, TILE_SIZE - 20);
+            }
+          }
+        }
+      }
+
+      // 2. 폭발 이펙트 그리기
+      if (gameState.explosions) {
+        ctx.fillStyle = '#E74C3C';
+        gameState.explosions.forEach(exp => {
+          ctx.fillRect(exp.x * TILE_SIZE, exp.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        });
+      }
+
+      // 3. 플레이어들 그리기
+      if (gameState.players) {
+        Object.values(gameState.players).forEach(p => {
+          if (!p.isAlive) return;
+
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x * TILE_SIZE + TILE_SIZE / 2, p.y * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE / 3, 0, Math.PI * 2);
+          ctx.fill();
+
+          // 플레이어 번호 표시 (P1, P2)
+          ctx.fillStyle = '#FFFFFF';
+          ctx.font = 'bold 12px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText(`P${p.pNum}`, p.x * TILE_SIZE + TILE_SIZE / 2, p.y * TILE_SIZE + TILE_SIZE / 2 + 4);
+        });
+      }
+    }
   </script>
 </body>
 </html>
