@@ -37,6 +37,39 @@
       background-color: #85C1E9;
       display: block;
     }
+    /* 다시하기 오버레이 UI */
+    #overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    #winner-text {
+      font-size: 28px;
+      font-weight: bold;
+      color: #f1c40f;
+      margin-bottom: 20px;
+    }
+    #restart-btn {
+      padding: 12px 24px;
+      font-size: 18px;
+      font-weight: bold;
+      background-color: #2ecc71;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    #restart-btn:hover {
+      background-color: #27ae60;
+    }
   </style>
 </head>
 <body>
@@ -46,11 +79,15 @@
   <div id="player-info">
     <span>조작법: 방향키(이동) / Space(물풍선)</span>
   </div>
+
   <div id="game-container">
     <canvas id="gameCanvas" width="600" height="600"></canvas>
+    <div id="overlay">
+      <div id="winner-text">Player 1 승리!</div>
+      <button id="restart-btn" onclick="requestRestart()">다시하기</button>
+    </div>
   </div>
 
-  <!-- 백엔드 Socket.io 라이브러리 로드 -->
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
@@ -58,12 +95,13 @@
     const ctx = canvas.getContext('2d');
     const statusDiv = document.getElementById('status');
     const playerInfoDiv = document.getElementById('player-info');
+    const overlay = document.getElementById('overlay');
+    const winnerText = document.getElementById('winner-text');
 
     const ROWS = 15;
     const COLS = 15;
     const TILE_SIZE = canvas.width / COLS;
 
-    // 타일 타입 정의
     const TILE = {
       EMPTY: 0,
       SOLID_BLOCK: 1,
@@ -80,7 +118,6 @@
       explosions: []
     };
 
-    // 소켓 이벤트 처리
     socket.on('connect', () => {
       statusDiv.innerText = '서버에 연결되었습니다. 다른 플레이어를 기다리는 중...';
     });
@@ -104,11 +141,11 @@
 
     socket.on('playerLeft', (id) => {
       delete gameState.players[id];
+      overlay.style.display = 'none';
       updateStatus();
       statusDiv.innerText = '상대방이 나가 대기 상태로 전환되었습니다.';
     });
 
-    // 서버 측 메인 루프에서 전송하는 60FPS 상태 수신
     socket.on('gameState', (state) => {
       gameState = state;
       updateStatus();
@@ -116,10 +153,17 @@
     });
 
     socket.on('gameOver', (data) => {
-      setTimeout(() => {
-        alert(`게임 종료! 승자: ${data.winner}`);
-      }, 100);
+      winnerText.innerText = `${data.winner} 승리!`;
+      overlay.style.display = 'flex';
     });
+
+    socket.on('gameRestarted', () => {
+      overlay.style.display = 'none';
+    });
+
+    function requestRestart() {
+      socket.emit('restartGame');
+    }
 
     function updateStatus() {
       const pCount = Object.keys(gameState.players).length;
@@ -131,11 +175,10 @@
       }
     }
 
-    // 키 입력 처리 -> 서버로 보냄
     const keysPressed = {};
     window.addEventListener('keydown', (e) => {
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
-        e.preventDefault(); // 스크롤 방지
+        e.preventDefault();
       }
 
       if (e.key === ' ') {
@@ -160,11 +203,9 @@
       if (key === 'ArrowRight') socket.emit('move', 'right');
     }
 
-    // 서버 상태에 따라 화면을 그리는 함수
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // 1. 맵 및 벽, 아이템 그리기
       if (gameState.map && gameState.map.length > 0) {
         for (let r = 0; r < ROWS; r++) {
           for (let c = 0; c < COLS; c++) {
@@ -192,7 +233,6 @@
         }
       }
 
-      // 2. 폭발 이펙트 그리기
       if (gameState.explosions) {
         ctx.fillStyle = '#E74C3C';
         gameState.explosions.forEach(exp => {
@@ -200,7 +240,6 @@
         });
       }
 
-      // 3. 플레이어들 그리기
       if (gameState.players) {
         Object.values(gameState.players).forEach(p => {
           if (!p.isAlive) return;
@@ -210,7 +249,6 @@
           ctx.arc(p.x * TILE_SIZE + TILE_SIZE / 2, p.y * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE / 3, 0, Math.PI * 2);
           ctx.fill();
 
-          // 플레이어 번호 표시 (P1, P2)
           ctx.fillStyle = '#FFFFFF';
           ctx.font = 'bold 12px Arial';
           ctx.textAlign = 'center';
