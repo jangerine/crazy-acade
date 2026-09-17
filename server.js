@@ -4,58 +4,94 @@ const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: "*" }
-});
+const io = new Server(server, { cors: { origin: "*" } });
 
 app.use(express.static(__dirname + '/public'));
 
 const ROWS = 15;
 const COLS = 15;
 
-// 타일 타입 정의
 const TILE = {
   EMPTY: 0,
-  SOLID_BLOCK: 1, // 파괴 불가 (철조망/바위)
-  SOFT_BLOCK: 2,  // 파괴 가능 (텐트/나무상자)
+  SOLID_BLOCK: 1,
+  SOFT_BLOCK: 2,
   BOMB: 3,
   ITEM_BOMB: 4,
   ITEM_RANGE: 5
 };
 
-// ⛺ [캠핑장 고정 맵 패턴 (15x15)]
-// 1: 철조망/바위 (못 부숨), 2: 텐트/상자 (부술 수 있음), 0: 빈 공간
-const CAMP_MAP_LAYOUT = [
-  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-  [1, 0, 0, 2, 2, 0, 1, 1, 1, 0, 2, 2, 0, 0, 1],
-  [1, 0, 1, 2, 1, 2, 0, 1, 0, 2, 1, 2, 1, 0, 1],
-  [1, 2, 2, 0, 2, 2, 2, 1, 2, 2, 2, 0, 2, 2, 1],
-  [1, 2, 1, 2, 1, 0, 2, 1, 2, 0, 1, 2, 1, 2, 1],
-  [1, 0, 2, 2, 2, 2, 0, 1, 0, 2, 2, 2, 2, 0, 1],
-  [1, 1, 0, 1, 0, 1, 2, 1, 2, 1, 0, 1, 0, 1, 1],
-  [1, 1, 1, 2, 2, 2, 0, 1, 0, 2, 2, 2, 1, 1, 1], // 7열(중앙) 철조망 라인
-  [1, 1, 0, 1, 0, 1, 2, 1, 2, 1, 0, 1, 0, 1, 1],
-  [1, 0, 2, 2, 2, 2, 0, 1, 0, 2, 2, 2, 2, 0, 1],
-  [1, 2, 1, 2, 1, 0, 2, 1, 2, 0, 1, 2, 1, 2, 1],
-  [1, 2, 2, 0, 2, 2, 2, 1, 2, 2, 2, 0, 2, 2, 1],
-  [1, 0, 1, 2, 1, 2, 0, 1, 0, 2, 1, 2, 1, 0, 1],
-  [1, 0, 0, 2, 2, 0, 1, 1, 1, 0, 2, 2, 0, 0, 1],
-  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-];
+// ⛺ [프리셋 맵 모음]
+const MAP_PRESETS = {
+  camp: [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 0, 0, 2, 2, 0, 1, 1, 1, 0, 2, 2, 0, 0, 1],
+    [1, 0, 1, 2, 1, 2, 0, 1, 0, 2, 1, 2, 1, 0, 1],
+    [1, 2, 2, 0, 2, 2, 2, 1, 2, 2, 2, 0, 2, 2, 1],
+    [1, 2, 1, 2, 1, 0, 2, 1, 2, 0, 1, 2, 1, 2, 1],
+    [1, 0, 2, 2, 2, 2, 0, 1, 0, 2, 2, 2, 2, 0, 1],
+    [1, 1, 0, 1, 0, 1, 2, 1, 2, 1, 0, 1, 0, 1, 1],
+    [1, 1, 1, 2, 2, 2, 0, 1, 0, 2, 2, 2, 1, 1, 1],
+    [1, 1, 0, 1, 0, 1, 2, 1, 2, 1, 0, 1, 0, 1, 1],
+    [1, 0, 2, 2, 2, 2, 0, 1, 0, 2, 2, 2, 2, 0, 1],
+    [1, 2, 1, 2, 1, 0, 2, 1, 2, 0, 1, 2, 1, 2, 1],
+    [1, 2, 2, 0, 2, 2, 2, 1, 2, 2, 2, 0, 2, 2, 1],
+    [1, 0, 1, 2, 1, 2, 0, 1, 0, 2, 1, 2, 1, 0, 1],
+    [1, 0, 0, 2, 2, 0, 1, 1, 1, 0, 2, 2, 0, 0, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  ],
+  patrit: [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 0, 0, 2, 2, 2, 1, 2, 1, 2, 2, 2, 0, 0, 1],
+    [1, 0, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 0, 1],
+    [1, 2, 1, 2, 2, 2, 2, 0, 2, 2, 2, 2, 1, 2, 1],
+    [1, 2, 2, 2, 1, 1, 2, 1, 2, 1, 1, 2, 2, 2, 1],
+    [1, 2, 1, 2, 1, 0, 0, 2, 0, 0, 1, 2, 1, 2, 1],
+    [1, 1, 2, 2, 2, 0, 1, 1, 1, 0, 2, 2, 2, 1, 1],
+    [1, 2, 1, 0, 1, 2, 1, 1, 1, 2, 1, 0, 1, 2, 1],
+    [1, 1, 2, 2, 2, 0, 1, 1, 1, 0, 2, 2, 2, 1, 1],
+    [1, 2, 1, 2, 1, 0, 0, 2, 0, 0, 1, 2, 1, 2, 1],
+    [1, 2, 2, 2, 1, 1, 2, 1, 2, 1, 1, 2, 2, 2, 1],
+    [1, 2, 1, 2, 2, 2, 2, 0, 2, 2, 2, 2, 1, 2, 1],
+    [1, 0, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 0, 1],
+    [1, 0, 0, 2, 2, 2, 1, 2, 1, 2, 2, 2, 0, 0, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  ],
+  factory: [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 1],
+    [1, 0, 1, 1, 2, 1, 2, 1, 2, 1, 2, 1, 1, 0, 1],
+    [1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1],
+    [1, 2, 2, 2, 1, 2, 1, 2, 1, 2, 1, 2, 2, 2, 1],
+    [1, 2, 1, 2, 2, 2, 2, 1, 2, 2, 2, 2, 1, 2, 1],
+    [1, 2, 2, 2, 1, 2, 1, 2, 1, 2, 1, 2, 2, 2, 1],
+    [1, 2, 1, 2, 2, 1, 2, 0, 2, 1, 2, 2, 1, 2, 1],
+    [1, 2, 2, 2, 1, 2, 1, 2, 1, 2, 1, 2, 2, 2, 1],
+    [1, 2, 1, 2, 2, 2, 2, 1, 2, 2, 2, 2, 1, 2, 1],
+    [1, 2, 2, 2, 1, 2, 1, 2, 1, 2, 1, 2, 2, 2, 1],
+    [1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1],
+    [1, 0, 1, 1, 2, 1, 2, 1, 2, 1, 2, 1, 1, 0, 1],
+    [1, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  ]
+};
 
+let currentMapKey = 'camp';
 let map = [];
 let players = {};
 let bombs = [];
 let explosions = [];
 let isGameOver = false;
+let isGameStarted = false; // 대기실 / 게임 진행 상태 구분
 
-// 고정된 캠핑장 맵 로드
-function initMap() {
-  map = JSON.parse(JSON.stringify(CAMP_MAP_LAYOUT));
+function loadSelectedMap(key) {
+  if (MAP_PRESETS[key]) {
+    currentMapKey = key;
+    map = JSON.parse(JSON.stringify(MAP_PRESETS[key]));
+  }
 }
 
 function resetGameRound() {
-  initMap();
+  loadSelectedMap(currentMapKey);
   bombs = [];
   explosions = [];
   isGameOver = false;
@@ -70,11 +106,9 @@ function resetGameRound() {
     p.isAlive = true;
     p.lastMoveTime = 0;
   });
-
-  io.emit('gameRestarted');
 }
 
-initMap();
+loadSelectedMap('camp');
 
 io.on('connection', (socket) => {
   const playerKeys = Object.keys(players);
@@ -100,11 +134,36 @@ io.on('connection', (socket) => {
     lastMoveTime: 0
   };
 
-  socket.emit('init', { id: socket.id, map, players });
+  // 초기 상태 전송
+  socket.emit('init', {
+    id: socket.id,
+    map,
+    players,
+    selectedMap: currentMapKey,
+    isGameStarted
+  });
+  
   socket.broadcast.emit('playerJoined', players[socket.id]);
 
+  // 방장이 맵을 선택할 때
+  socket.on('selectMap', (mapKey) => {
+    if (!isGameStarted && players[socket.id]?.pNum === 1) { // P1(방장)만 변경 가능
+      loadSelectedMap(mapKey);
+      io.emit('mapChanged', { selectedMap: currentMapKey, map });
+    }
+  });
+
+  // 게임 시작 요청 (방장)
+  socket.on('startGame', () => {
+    if (!isGameStarted && players[socket.id]?.pNum === 1) {
+      isGameStarted = true;
+      resetGameRound();
+      io.emit('gameStarted', { map, players });
+    }
+  });
+
   socket.on('move', (dir) => {
-    if (isGameOver) return;
+    if (!isGameStarted || isGameOver) return;
     const p = players[socket.id];
     if (!p || !p.isAlive) return;
 
@@ -137,7 +196,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('placeBomb', () => {
-    if (isGameOver) return;
+    if (!isGameStarted || isGameOver) return;
     const p = players[socket.id];
     if (!p || !p.isAlive) return;
 
@@ -156,19 +215,25 @@ io.on('connection', (socket) => {
   });
 
   socket.on('restartGame', () => {
+    isGameStarted = false; // 대기실 상태로 복귀
     resetGameRound();
+    io.emit('returnToLobby', { selectedMap: currentMapKey, map, players });
   });
 
   socket.on('disconnect', () => {
     delete players[socket.id];
     io.emit('playerLeft', socket.id);
     if (Object.keys(players).length === 0) {
+      isGameStarted = false;
       resetGameRound();
     }
   });
 });
 
+// 게임 루프
 setInterval(() => {
+  if (!isGameStarted) return;
+
   const now = Date.now();
   explosions = explosions.filter(exp => now - exp.createdAt < 500);
 
@@ -219,6 +284,4 @@ setInterval(() => {
 }, 1000 / 60);
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
