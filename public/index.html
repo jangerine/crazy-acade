@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Crazy Arcade Multi - Socket.io</title>
+  <title>Crazy Arcade Multi - Fast Response</title>
   <style>
     body {
       background-color: #1a1a1a;
@@ -37,7 +37,6 @@
       background-color: #85C1E9;
       display: block;
     }
-    /* 다시하기 오버레이 UI */
     #overlay {
       position: absolute;
       top: 0;
@@ -74,7 +73,7 @@
 </head>
 <body>
 
-  <h1>Web Crazy Arcade (2P Multi)</h1>
+  <h1>Web Crazy Arcade (Multi)</h1>
   <div id="status">서버 연결 중...</div>
   <div id="player-info">
     <span>조작법: 방향키(이동) / Space(물풍선)</span>
@@ -118,6 +117,14 @@
       explosions: []
     };
 
+    // 키 상태 관리 객체 (연속 입력 보장)
+    const keys = {
+      ArrowUp: false,
+      ArrowDown: false,
+      ArrowLeft: false,
+      ArrowRight: false
+    };
+
     socket.on('connect', () => {
       statusDiv.innerText = '서버에 연결되었습니다. 다른 플레이어를 기다리는 중...';
     });
@@ -132,6 +139,7 @@
       gameState.map = data.map;
       gameState.players = data.players;
       updateStatus();
+      requestAnimationFrame(clientLoop);
     });
 
     socket.on('playerJoined', (player) => {
@@ -147,9 +155,25 @@
     });
 
     socket.on('gameState', (state) => {
-      gameState = state;
+      // 서버 상태 수신 시, 상대방 위치 및 지도 정보 동기화
+      gameState.map = state.map;
+      gameState.explosions = state.explosions;
+
+      Object.keys(state.players).forEach(id => {
+        if (id === myId) {
+          // 내 스탯 정보 업데이트
+          if (gameState.players[myId]) {
+            gameState.players[myId].maxBombs = state.players[myId].maxBombs;
+            gameState.players[myId].bombRange = state.players[myId].bombRange;
+            gameState.players[myId].isAlive = state.players[myId].isAlive;
+          }
+        } else {
+          // 상대방 위치 업데이트
+          gameState.players[id] = state.players[id];
+        }
+      });
+
       updateStatus();
-      draw();
     });
 
     socket.on('gameOver', (data) => {
@@ -175,7 +199,7 @@
       }
     }
 
-    const keysPressed = {};
+    // 키 입력 이벤트 수신기
     window.addEventListener('keydown', (e) => {
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
         e.preventDefault();
@@ -186,21 +210,64 @@
         return;
       }
 
-      if (!keysPressed[e.key]) {
-        keysPressed[e.key] = true;
-        sendMoveSignal(e.key);
+      if (e.key in keys) {
+        keys[e.key] = true;
       }
     });
 
     window.addEventListener('keyup', (e) => {
-      delete keysPressed[e.key];
+      if (e.key in keys) {
+        keys[e.key] = false;
+      }
     });
 
-    function sendMoveSignal(key) {
-      if (key === 'ArrowUp') socket.emit('move', 'up');
-      if (key === 'ArrowDown') socket.emit('move', 'down');
-      if (key === 'ArrowLeft') socket.emit('move', 'left');
-      if (key === 'ArrowRight') socket.emit('move', 'right');
+    // 클라이언트 이동 입력 처리 (0.12초 간격)
+    let lastMoveTime = 0;
+    const MOVE_INTERVAL = 120;
+
+    function handleInput() {
+      const now = Date.now();
+      if (now - lastMoveTime < MOVE_INTERVAL) return;
+
+      let dir = null;
+      if (keys.ArrowUp) dir = 'up';
+      else if (keys.ArrowDown) dir = 'down';
+      else if (keys.ArrowLeft) dir = 'left';
+      else if (keys.ArrowRight) dir = 'right';
+
+      if (dir) {
+        predictMove(dir); // 1. 화면에 먼저 이동 반영 (반응속도 극대화)
+        socket.emit('move', dir); // 2. 서버로 신호 전송
+        lastMoveTime = now;
+      }
+    }
+
+    // 클라이언트 측 예측 위치 업데이트 함수
+    function predictMove(dir) {
+      const me = gameState.players[myId];
+      if (!me || !me.isAlive) return;
+
+      let nx = me.x;
+      let ny = me.y;
+      if (dir === 'up') ny--;
+      if (dir === 'down') ny++;
+      if (dir === 'left') nx--;
+      if (dir === 'right') nx++;
+
+      if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS) {
+        const target = gameState.map[ny] ? gameState.map[ny][nx] : TILE.SOLID_BLOCK;
+        if (target !== TILE.SOLID_BLOCK && target !== TILE.SOFT_BLOCK && target !== TILE.BOMB) {
+          me.x = nx;
+          me.y = ny;
+        }
+      }
+    }
+
+    // 클라이언트 메인 루프 (입력 처리 + 화면 렌더링)
+    function clientLoop() {
+      handleInput();
+      draw();
+      requestAnimationFrame(clientLoop);
     }
 
     function draw() {
