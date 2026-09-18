@@ -6,12 +6,9 @@
   <title>Crazy Arcade Online 💣</title>
   <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
   <style>
-    * {
-      box-sizing: border-box;
-      user-select: none;
-    }
+    * { box-sizing: border-box; user-select: none; }
     body {
-      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      background: #0d1b2a;
       color: #fff;
       font-family: 'Jua', sans-serif;
       display: flex;
@@ -23,199 +20,217 @@
       overflow: hidden;
     }
 
-    h1 {
-      margin: 5px 0 15px 0;
-      font-size: 38px;
-      color: #38bdf8;
-      text-shadow: 0 4px 0 #0284c7, 0 8px 15px rgba(0,0,0,0.5);
-      letter-spacing: 2px;
-    }
-
-    #lobby-controls {
-      display: flex;
-      gap: 15px;
-      margin-bottom: 15px;
-      align-items: center;
-      background: rgba(30, 41, 59, 0.8);
-      backdrop-filter: blur(10px);
-      padding: 12px 28px;
-      border-radius: 20px;
-      box-shadow: 0 8px 25px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.1);
-      border: 2px solid #334155;
-    }
-
-    label {
-      font-size: 18px;
-      color: #f1f5f9;
-    }
-
-    select {
-      padding: 8px 16px;
-      font-size: 16px;
-      font-family: 'Jua', sans-serif;
-      border-radius: 12px;
-      border: 2px solid #3b82f6;
-      background: #0f172a;
-      color: #38bdf8;
-      outline: none;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    select:hover {
-      border-color: #60a5fa;
-    }
-
-    #start-btn {
-      padding: 8px 24px;
-      font-size: 18px;
-      font-family: 'Jua', sans-serif;
-      border-radius: 12px;
-      border: none;
-      background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%);
-      color: #fff;
-      cursor: pointer;
-      box-shadow: 0 4px 0 #1e40af, 0 6px 15px rgba(59, 130, 246, 0.4);
-      transition: all 0.15s ease;
-    }
-
-    #start-btn:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 0 #1e40af, 0 8px 20px rgba(59, 130, 246, 0.5);
-    }
-
-    #start-btn:active:not(:disabled) {
-      transform: translateY(2px);
-      box-shadow: 0 2px 0 #1e40af;
-    }
-
-    #start-btn:disabled {
-      background: #475569;
-      box-shadow: none;
-      cursor: not-allowed;
-      opacity: 0.6;
-    }
-
-    #status {
-      margin-bottom: 12px;
-      font-size: 16px;
-      color: #fbbf24;
-      text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-    }
-
-    #game-container {
-      position: relative;
-      box-shadow: 0 20px 50px rgba(0,0,0,0.6);
-      border-radius: 20px;
-    }
-
-    #hud {
-      display: flex;
-      justify-content: space-around;
-      width: 600px;
-      background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-      border: 3px solid #334155;
-      border-bottom: none;
-      border-radius: 20px 20px 0 0;
-      padding: 10px 0;
-      box-sizing: border-box;
-    }
-
-    .hud-card {
+    /* 크크아 스타일 타이틀 */
+    .title-container {
       display: flex;
       align-items: center;
       gap: 10px;
-      font-size: 16px;
-      background: #1e293b;
-      padding: 6px 18px;
+      margin-bottom: 10px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 36px;
+      color: #00d2ff;
+      text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 5px 0 #0056b3;
+      letter-spacing: 1px;
+    }
+
+    /* 대기실 상단 컨트롤 */
+    #lobby-controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 12px;
+      align-items: center;
+      background: #1b263b;
+      padding: 8px 20px;
       border-radius: 30px;
-      border: 2px solid #334155;
-      box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
+      border: 3px solid #415a77;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    }
+    select, button {
+      font-family: 'Jua', sans-serif;
+      font-size: 16px;
+      padding: 6px 16px;
+      border-radius: 20px;
+      border: none;
+      outline: none;
+    }
+    select {
+      background: #0d1b2a;
+      color: #00d2ff;
+      border: 2px solid #00d2ff;
+      cursor: pointer;
+    }
+    #start-btn {
+      background: linear-gradient(180deg, #ffcc00 0%, #ff9900 100%);
+      color: #000;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 0 #cc6600;
+      transition: all 0.1s;
+    }
+    #start-btn:hover:not(:disabled) { transform: translateY(-1px); }
+    #start-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 #cc6600; }
+    #start-btn:disabled { background: #555; color: #888; box-shadow: none; cursor: not-allowed; }
+
+    #status {
+      margin-bottom: 10px;
+      font-size: 15px;
+      color: #ffcc00;
+      text-shadow: 1px 1px 2px #000;
     }
 
+    /* 🎮 크아 게임기 프레임 레이아웃 */
+    #arcade-frame {
+      display: flex;
+      background: #2a6f97;
+      border: 6px solid #014f86;
+      border-radius: 16px;
+      padding: 12px;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.8), inset 0 0 15px rgba(255,255,255,0.2);
+      gap: 12px;
+    }
+
+    /* 좌/우 유저 패널 */
+    .user-panel {
+      width: 130px;
+      background: #012a4a;
+      border: 3px solid #014f86;
+      border-radius: 12px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .panel-title {
+      font-size: 16px;
+      color: #89c2d9;
+      border-bottom: 2px solid #014f86;
+      width: 100%;
+      text-align: center;
+      padding-bottom: 4px;
+    }
+    .avatar-box {
+      width: 80px;
+      height: 80px;
+      background: #014f86;
+      border: 3px solid #2a6f97;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+    }
+    .stat-list {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 14px;
+    }
+    .stat-item {
+      display: flex;
+      justify-content: space-between;
+      background: #013a63;
+      padding: 4px 8px;
+      border-radius: 8px;
+      border: 1px solid #2a6f97;
+    }
+
+    /* 메인 캔버스 뷰 */
+    #canvas-container {
+      position: relative;
+      border: 4px solid #012a4a;
+      border-radius: 8px;
+      overflow: hidden;
+    }
     canvas {
-      border: 3px solid #334155;
       display: block;
-      border-radius: 0 0 20px 20px;
+      background-color: #2a6f97;
     }
 
+    /* 승리/패배 모달 */
     #overlay {
       position: absolute;
       top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(15, 23, 42, 0.88);
-      backdrop-filter: blur(8px);
+      background: rgba(1, 42, 74, 0.9);
       display: none;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      border-radius: 20px;
-      animation: fadeIn 0.3s ease;
+      z-index: 10;
     }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: scale(0.95); }
-      to { opacity: 1; transform: scale(1); }
-    }
-
     #winner-text {
-      font-size: 42px;
-      color: #fbbf24;
-      margin-bottom: 25px;
-      text-shadow: 0 4px 0 #d97706, 0 8px 20px rgba(251, 191, 36, 0.4);
+      font-size: 36px;
+      color: #ffcc00;
+      margin-bottom: 20px;
+      text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
     }
-
     .lobby-btn {
-      background: linear-gradient(180deg, #10b981 0%, #047857 100%);
+      background: linear-gradient(180deg, #00d2ff 0%, #0066cc 100%);
       color: white;
-      padding: 12px 30px;
-      font-size: 20px;
+      padding: 10px 24px;
+      font-size: 18px;
       font-family: 'Jua', sans-serif;
       border: none;
-      border-radius: 14px;
+      border-radius: 20px;
       cursor: pointer;
-      box-shadow: 0 4px 0 #065f46, 0 6px 20px rgba(16, 185, 129, 0.4);
-      transition: all 0.15s ease;
-    }
-
-    .lobby-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 0 #065f46, 0 8px 25px rgba(16, 185, 129, 0.5);
-    }
-
-    .lobby-btn:active {
-      transform: translateY(2px);
-      box-shadow: 0 2px 0 #065f46;
+      box-shadow: 0 4px 0 #003366;
     }
   </style>
 </head>
 <body>
 
-  <h1>Crazy Arcade Online 💣</h1>
+  <div class="title-container">
+    <h1>CRAZY ARCADE BnB</h1>
+  </div>
 
   <div id="lobby-controls">
-    <label for="mapSelect">⛺ 맵 선택:</label>
+    <label for="mapSelect">⛺ 맵:</label>
     <select id="mapSelect" onchange="onMapChange()">
       <option value="camp">캠프 (Camp)</option>
       <option value="patrit">패트릿 (Patrit)</option>
       <option value="factory">팩토리 (Factory)</option>
     </select>
-    <button id="start-btn" onclick="startGame()">게임 시작</button>
+    <button id="start-btn" onclick="startGame()">START</button>
   </div>
 
   <div id="status">서버 연결 중...</div>
 
-  <div id="game-container">
-    <div id="hud">
-      <div class="hud-card">💧 물풍선: <span id="hud-bombs" style="color:#60a5fa">1</span></div>
-      <div class="hud-card">🔥 물줄기: <span id="hud-range" style="color:#f87171">1</span></div>
-      <div class="hud-card">🛼 스피드: <span id="hud-speed" style="color:#34d399">1</span></div>
+  <!-- 🎮 크아 게임 화면 프레임 (좌/우 유저 상태창 + 맵) -->
+  <div id="arcade-frame">
+    <!-- P1 패널 -->
+    <div class="user-panel">
+      <div class="panel-title">PLAYER 1</div>
+      <div class="avatar-box" id="p1-avatar">🔴</div>
+      <div class="stat-list">
+        <div class="stat-item"><span>🎈 풍선</span><span id="p1-bombs" style="color:#60a5fa">1</span></div>
+        <div class="stat-item"><span>🔥 줄기</span><span id="p1-range" style="color:#f87171">1</span></div>
+        <div class="stat-item"><span>🛼 스피드</span><span id="p1-speed" style="color:#34d399">1</span></div>
+      </div>
     </div>
 
-    <canvas id="gameCanvas" width="600" height="600"></canvas>
+    <!-- 맵 캔버스 -->
+    <div id="canvas-container">
+      <canvas id="gameCanvas" width="525" height="525"></canvas>
 
-    <div id="overlay">
-      <div id="winner-text">Player 1 승리!</div>
-      <button class="lobby-btn" onclick="requestLobby()">대기실로 이동</button>
+      <div id="overlay">
+        <div id="winner-text">Player 1 승리!</div>
+        <button class="lobby-btn" onclick="requestLobby()">대기실로 이동</button>
+      </div>
+    </div>
+
+    <!-- P2 패널 -->
+    <div class="user-panel">
+      <div class="panel-title">PLAYER 2</div>
+      <div class="avatar-box" id="p2-avatar">🔵</div>
+      <div class="stat-list">
+        <div class="stat-item"><span>🎈 풍선</span><span id="p2-bombs" style="color:#60a5fa">1</span></div>
+        <div class="stat-item"><span>🔥 줄기</span><span id="p2-range" style="color:#f87171">1</span></div>
+        <div class="stat-item"><span>🛼 스피드</span><span id="p2-speed" style="color:#34d399">1</span></div>
+      </div>
     </div>
   </div>
 
@@ -350,19 +365,22 @@
       startBtn.disabled = isGameStarted || !isHost;
 
       if (!isGameStarted) {
-        statusDiv.innerText = isHost ? `[방장] 맵을 선택하고 [게임 시작]을 누르세요.` : `[참가자] 방장의 게임 시작을 기다리는 중...`;
+        statusDiv.innerText = isHost ? `[방장] 맵을 선택하고 [START]를 누르세요.` : `[참가자] 방장의 게임 시작을 기다리는 중...`;
       } else {
         statusDiv.innerText = `게임 진행 중 (Player ${me ? me.pNum : ''})`;
       }
     }
 
     function updateHUD() {
-      const me = gameState.players[myId];
-      if (me) {
-        document.getElementById('hud-bombs').innerText = me.maxBombs;
-        document.getElementById('hud-range').innerText = me.bombRange;
-        document.getElementById('hud-speed').innerText = me.speed || 1;
-      }
+      Object.values(gameState.players).forEach(p => {
+        const prefix = `p${p.pNum}`;
+        const bEl = document.getElementById(`${prefix}-bombs`);
+        const rEl = document.getElementById(`${prefix}-range`);
+        const sEl = document.getElementById(`${prefix}-speed`);
+        if (bEl) bEl.innerText = p.maxBombs;
+        if (rEl) rEl.innerText = p.bombRange;
+        if (sEl) sEl.innerText = p.speed || 1;
+      });
     }
 
     window.addEventListener('keydown', (e) => {
@@ -473,9 +491,7 @@
 
           const tile = gameState.map[r] ? gameState.map[r][c] : TILE.SOLID_BLOCK;
 
-          if (tile === TILE.SOLID_BLOCK || tile === TILE.SOFT_BLOCK) {
-            return false;
-          }
+          if (tile === TILE.SOLID_BLOCK || tile === TILE.SOFT_BLOCK) return false;
 
           if (tile === TILE.BOMB) {
             const isInsideMyBomb = myActiveBombs.some(b => b.r === r && b.c === c);
@@ -492,7 +508,7 @@
       requestAnimationFrame(clientLoop);
     }
 
-    // 🎨 맵 배경 렌더링 (테마별)
+    // 🎨 크아 원작풍 맵 배경
     function drawBackground() {
       const theme = mapSelect.value;
       for (let r = 0; r < ROWS; r++) {
@@ -501,288 +517,168 @@
           const y = r * TILE_SIZE;
 
           if (theme === 'camp') {
-            // 풀밭 격자 패턴
-            ctx.fillStyle = (r + c) % 2 === 0 ? '#4ade80' : '#22c55e';
-            ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+            ctx.fillStyle = (r + c) % 2 === 0 ? '#60d394' : '#52b788';
           } else if (theme === 'patrit') {
-            // 사막 도로 패턴
-            ctx.fillStyle = (r + c) % 2 === 0 ? '#fb923c' : '#f97316';
-            ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
-          } else if (theme === 'factory') {
-            // 팩토리 격자 패턴
-            ctx.fillStyle = (r + c) % 2 === 0 ? '#64748b' : '#475569';
-            ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
-            ctx.strokeStyle = '#334155';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE);
+            ctx.fillStyle = (r + c) % 2 === 0 ? '#ee9b00' : '#ca6702';
+          } else {
+            ctx.fillStyle = (r + c) % 2 === 0 ? '#8d99ae' : '#7371fc';
           }
+          ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
         }
       }
     }
 
-    // 🎨 파괴 불가능 블록 (입체 텐트, 바위, 강철)
+    // 🎨 크아 원작 스타일 블록
     function drawSolidBlock(c, r) {
       const x = c * TILE_SIZE;
       const y = r * TILE_SIZE;
       const theme = mapSelect.value;
 
       if (theme === 'camp') {
-        // 캠프 텐트
-        ctx.fillStyle = '#ef4444';
-        ctx.beginPath();
-        ctx.moveTo(x + TILE_SIZE / 2, y + 4);
-        ctx.lineTo(x + 4, y + TILE_SIZE - 4);
-        ctx.lineTo(x + TILE_SIZE - 4, y + TILE_SIZE - 4);
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.fillStyle = '#dc2626';
-        ctx.beginPath();
-        ctx.moveTo(x + TILE_SIZE / 2, y + 4);
-        ctx.lineTo(x + TILE_SIZE - 4, y + TILE_SIZE - 4);
-        ctx.lineTo(x + TILE_SIZE / 2, y + TILE_SIZE - 4);
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.fillStyle = '#fef08a';
-        ctx.beginPath();
-        ctx.moveTo(x + TILE_SIZE / 2, y + 16);
-        ctx.lineTo(x + TILE_SIZE / 2 - 6, y + TILE_SIZE - 4);
-        ctx.lineTo(x + TILE_SIZE / 2 + 6, y + TILE_SIZE - 4);
-        ctx.closePath();
-        ctx.fill();
-      } else if (theme === 'patrit') {
-        // 바위 블록
-        ctx.fillStyle = '#78350f';
-        ctx.beginPath();
-        ctx.roundRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4, 10);
-        ctx.fill();
-
-        ctx.fillStyle = '#92400e';
-        ctx.beginPath();
-        ctx.roundRect(x + 4, y + 4, TILE_SIZE - 8, TILE_SIZE - 12, 6);
-        ctx.fill();
-      } else {
-        // 강철 구조물
-        ctx.fillStyle = '#1e293b';
+        // 캠프 나무 텐트
+        ctx.fillStyle = '#d90429';
         ctx.fillRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4);
-
-        ctx.fillStyle = '#334155';
-        ctx.fillRect(x + 4, y + 4, TILE_SIZE - 8, TILE_SIZE - 8);
-
-        ctx.fillStyle = '#0f172a';
-        ctx.beginPath();
-        ctx.arc(x + 8, y + 8, 2, 0, Math.PI * 2);
-        ctx.arc(x + TILE_SIZE - 8, y + 8, 2, 0, Math.PI * 2);
-        ctx.arc(x + 8, y + TILE_SIZE - 8, 2, 0, Math.PI * 2);
-        ctx.arc(x + TILE_SIZE - 8, y + TILE_SIZE - 8, 2, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.fillStyle = '#ef233c';
+        ctx.fillRect(x + 5, y + 5, TILE_SIZE - 10, TILE_SIZE - 10);
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(x + TILE_SIZE / 2 - 3, y + 8, 6, TILE_SIZE - 16);
+      } else {
+        ctx.fillStyle = '#2b2d42';
+        ctx.fillRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+        ctx.strokeStyle = '#8d99ae';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x + 4, y + 4, TILE_SIZE - 8, TILE_SIZE - 8);
       }
     }
 
-    // 🎨 파괴 가능 블록 (통나무, 상자)
     function drawSoftBlock(c, r) {
       const x = c * TILE_SIZE;
       const y = r * TILE_SIZE;
-      const theme = mapSelect.value;
-
-      if (theme === 'camp') {
-        // 통나무 블록
-        ctx.fillStyle = '#a16207';
-        ctx.beginPath();
-        ctx.roundRect(x + 3, y + 3, TILE_SIZE - 6, TILE_SIZE - 6, 6);
-        ctx.fill();
-
-        ctx.fillStyle = '#ca8a04';
-        ctx.beginPath();
-        ctx.arc(x + TILE_SIZE / 2, y + TILE_SIZE / 2, TILE_SIZE / 3, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.strokeStyle = '#854d0e';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      } else if (theme === 'factory') {
-        // 안전 상자
-        ctx.fillStyle = '#eab308';
-        ctx.fillRect(x + 3, y + 3, TILE_SIZE - 6, TILE_SIZE - 6);
-
-        ctx.strokeStyle = '#854d0e';
-        ctx.lineWidth = 3;
-        ctx.strokeRect(x + 6, y + 6, TILE_SIZE - 12, TILE_SIZE - 12);
-      } else {
-        // 나무 상자
-        ctx.fillStyle = '#b45309';
-        ctx.fillRect(x + 3, y + 3, TILE_SIZE - 6, TILE_SIZE - 6);
-
-        ctx.strokeStyle = '#78350f';
-        ctx.lineWidth = 3;
-        ctx.strokeRect(x + 3, y + 3, TILE_SIZE - 6, TILE_SIZE - 6);
-
-        ctx.beginPath();
-        ctx.moveTo(x + 3, y + 3);
-        ctx.lineTo(x + TILE_SIZE - 3, y + TILE_SIZE - 3);
-        ctx.stroke();
-      }
+      ctx.fillStyle = '#ffb703';
+      ctx.fillRect(x + 3, y + 3, TILE_SIZE - 6, TILE_SIZE - 6);
+      ctx.strokeStyle = '#fb8500';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(x + 5, y + 5, TILE_SIZE - 10, TILE_SIZE - 10);
     }
 
-    // 🎨 물풍선 애니메이션 & 그래픽
+    // 🎨 크아 특유의 왕물풍선
     function drawBomb(c, r) {
       const x = c * TILE_SIZE + TILE_SIZE / 2;
       const y = r * TILE_SIZE + TILE_SIZE / 2;
+      const scale = 1 + Math.sin(Date.now() / 120) * 0.08;
+      const radius = (TILE_SIZE / 2.3) * scale;
 
-      // 둥실둥실 바운스 효과
-      const scale = 1 + Math.sin(Date.now() / 150) * 0.05;
-      const radius = (TILE_SIZE / 2.5) * scale;
-
-      // 입체 그림자
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
       ctx.beginPath();
-      ctx.ellipse(x, y + radius * 0.8, radius * 0.8, radius * 0.3, 0, 0, Math.PI * 2);
+      ctx.ellipse(x, y + radius * 0.7, radius * 0.8, radius * 0.3, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // 물풍선 본체 (그라데이션)
-      const grad = ctx.createRadialGradient(x - radius * 0.3, y - radius * 0.3, radius * 0.1, x, y, radius);
-      grad.addColorStop(0, '#93c5fd');
-      grad.addColorStop(0.4, '#3b82f6');
-      grad.addColorStop(1, '#1d4ed8');
-
-      ctx.fillStyle = grad;
+      // 물방울 몸통
+      ctx.fillStyle = '#00b4d8';
       ctx.beginPath();
       ctx.arc(x, y, radius, 0, Math.PI * 2);
       ctx.fill();
 
-      // 하이라이트 (빛 반사)
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.strokeStyle = '#90e0ef';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // 크아 특유의 하얀 반사광
+      ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.arc(x - radius * 0.35, y - radius * 0.35, radius * 0.25, 0, Math.PI * 2);
+      ctx.arc(x - radius * 0.3, y - radius * 0.3, radius * 0.25, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // 🎨 아이템 카드 그래픽
-    function drawItem(c, r, bgColor, iconSymbol) {
+    // 🎨 크아 원작 아이템 바구니
+    function drawItem(c, r, bgColor, symbol) {
       const x = c * TILE_SIZE;
       const y = r * TILE_SIZE;
-      const pad = 6;
-      const size = TILE_SIZE - pad * 2;
-
-      // 카운팅 애니메이션 (상하 흔들림)
-      const floatY = Math.sin(Date.now() / 200) * 2;
+      const floatY = Math.sin(Date.now() / 180) * 2;
 
       ctx.fillStyle = bgColor;
       ctx.beginPath();
-      ctx.roundRect(x + pad, y + pad + floatY, size, size, 10);
+      ctx.roundRect(x + 4, y + 4 + floatY, TILE_SIZE - 8, TILE_SIZE - 8, 8);
       ctx.fill();
-
+      ctx.strokeStyle = '#fff';
       ctx.lineWidth = 2;
-      ctx.strokeStyle = '#ffffff';
       ctx.stroke();
 
-      ctx.font = '22px sans-serif';
+      ctx.font = '20px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(iconSymbol, x + TILE_SIZE / 2, y + TILE_SIZE / 2 + floatY);
+      ctx.fillText(symbol, x + TILE_SIZE / 2, y + TILE_SIZE / 2 + floatY);
     }
 
-    // 🎨 캐릭터 그래픽 (눈망울, 볼터치 연출)
+    // 🎨 크아 캐릭터 스킨 (배찌/다오 느낌)
     function drawPlayer(p, pos) {
       const x = pos.x + TILE_SIZE / 2;
       const y = pos.y + TILE_SIZE / 2;
-      const radius = TILE_SIZE / 2.6;
+      const radius = TILE_SIZE / 2.5;
 
-      // 발밑 그림자
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+      // 그림자
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
       ctx.beginPath();
-      ctx.ellipse(x, y + radius * 0.9, radius * 0.8, radius * 0.3, 0, 0, Math.PI * 2);
+      ctx.ellipse(x, y + radius * 0.8, radius * 0.7, radius * 0.3, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // 캐릭터 몸통 (그라데이션)
-      const grad = ctx.createRadialGradient(x - radius * 0.3, y - radius * 0.3, radius * 0.1, x, y, radius);
-      grad.addColorStop(0, '#ffffff');
-      grad.addColorStop(0.3, p.color);
-      grad.addColorStop(1, '#000000');
-
+      // 대가리/모자
       ctx.fillStyle = p.color;
       ctx.beginPath();
       ctx.arc(x, y, radius, 0, Math.PI * 2);
       ctx.fill();
-
-      // 테두리
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 2;
       ctx.stroke();
 
-      // 눈 (좌/우)
-      ctx.fillStyle = '#000000';
+      // 얼굴 면적 (크아 캐릭터 피부색)
+      ctx.fillStyle = '#ffe0bd';
       ctx.beginPath();
-      ctx.arc(x - 5, y - 2, 2.5, 0, Math.PI * 2);
-      ctx.arc(x + 5, y - 2, 2.5, 0, Math.PI * 2);
+      ctx.arc(x, y + 2, radius * 0.65, 0, Math.PI * 2);
       ctx.fill();
 
-      // 눈 반사광
-      ctx.fillStyle = '#ffffff';
+      // 눈
+      ctx.fillStyle = '#000';
       ctx.beginPath();
-      ctx.arc(x - 6, y - 3, 1, 0, Math.PI * 2);
-      ctx.arc(x + 4, y - 3, 1, 0, Math.PI * 2);
+      ctx.arc(x - 5, y, 2.5, 0, Math.PI * 2);
+      ctx.arc(x + 5, y, 2.5, 0, Math.PI * 2);
       ctx.fill();
 
       // 볼터치
-      ctx.fillStyle = 'rgba(244, 63, 94, 0.5)';
+      ctx.fillStyle = '#ff85a1';
       ctx.beginPath();
-      ctx.arc(x - 9, y + 3, 3, 0, Math.PI * 2);
-      ctx.arc(x + 9, y + 3, 3, 0, Math.PI * 2);
+      ctx.arc(x - 8, y + 4, 2.5, 0, Math.PI * 2);
+      ctx.arc(x + 8, y + 4, 2.5, 0, Math.PI * 2);
       ctx.fill();
-
-      // P1, P2 태그 배지
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
-      ctx.beginPath();
-      ctx.roundRect(x - 12, y - radius - 12, 24, 14, 6);
-      ctx.fill();
-
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 10px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(`P${p.pNum}`, x, y - radius - 5);
     }
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
       drawBackground();
 
       if (gameState.map && gameState.map.length > 0) {
         for (let r = 0; r < ROWS; r++) {
           for (let c = 0; c < COLS; c++) {
             const type = gameState.map[r][c];
-
-            if (type === TILE.SOLID_BLOCK) {
-              drawSolidBlock(c, r);
-            } else if (type === TILE.SOFT_BLOCK) {
-              drawSoftBlock(c, r);
-            } else if (type === TILE.BOMB) {
-              drawBomb(c, r);
-            } else if (type === TILE.ITEM_BOMB) {
-              drawItem(c, r, '#2563eb', '💧');
-            } else if (type === TILE.ITEM_RANGE) {
-              drawItem(c, r, '#dc2626', '🔥');
-            } else if (type === TILE.ITEM_SPEED) {
-              drawItem(c, r, '#059669', '🛼');
-            }
+            if (type === TILE.SOLID_BLOCK) drawSolidBlock(c, r);
+            else if (type === TILE.SOFT_BLOCK) drawSoftBlock(c, r);
+            else if (type === TILE.BOMB) drawBomb(c, r);
+            else if (type === TILE.ITEM_BOMB) drawItem(c, r, '#0077b6', '🎈');
+            else if (type === TILE.ITEM_RANGE) drawItem(c, r, '#d90429', '🔥');
+            else if (type === TILE.ITEM_SPEED) drawItem(c, r, '#38b000', '🛼');
           }
         }
       }
 
-      // 폭발 이펙트 연출
+      // 폭발 이펙트 (십자가 물줄기 느낌)
       if (gameState.explosions) {
-        ctx.fillStyle = 'rgba(248, 113, 113, 0.85)';
+        ctx.fillStyle = '#48cae4';
         gameState.explosions.forEach(exp => {
-          ctx.beginPath();
-          ctx.roundRect(exp.x * TILE_SIZE + 2, exp.y * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4, 8);
-          ctx.fill();
+          ctx.fillRect(exp.x * TILE_SIZE + 2, exp.y * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
         });
       }
 
-      // 플레이어 연출
+      // 플레이어
       if (gameState.players) {
         Object.values(gameState.players).forEach(p => {
           if (!p.isAlive) return;
