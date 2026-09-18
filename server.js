@@ -4,287 +4,312 @@ const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*" } });
+const io = new Server(server);
 
-app.use(express.static(__dirname + '/public'));
+app.use(express.static('public'));
 
+const PORT = 3000;
 const ROWS = 15;
 const COLS = 15;
 
-// 타일 및 아이템 타입 정의
 const TILE = {
   EMPTY: 0,
   SOLID_BLOCK: 1,
   SOFT_BLOCK: 2,
   BOMB: 3,
-  ITEM_BOMB: 4,  // 물풍선 +1
-  ITEM_RANGE: 5, // 물줄기 +1
-  ITEM_SPEED: 6  // 스피드 +1
+  ITEM_BOMB: 4,
+  ITEM_RANGE: 5,
+  ITEM_SPEED: 6
 };
 
-// ⛺ 프리셋 맵 데이터
-const MAP_PRESETS = {
+// 🗺️ 맵 템플릿 정의
+const MAP_TEMPLATES = {
   camp: [
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 0, 0, 2, 2, 0, 1, 1, 1, 0, 2, 2, 0, 0, 1],
-    [1, 0, 1, 2, 1, 2, 0, 1, 0, 2, 1, 2, 1, 0, 1],
-    [1, 2, 2, 0, 2, 2, 2, 1, 2, 2, 2, 0, 2, 2, 1],
-    [1, 2, 1, 2, 1, 0, 2, 1, 2, 0, 1, 2, 1, 2, 1],
-    [1, 0, 2, 2, 2, 2, 0, 1, 0, 2, 2, 2, 2, 0, 1],
-    [1, 1, 0, 1, 0, 1, 2, 1, 2, 1, 0, 1, 0, 1, 1],
-    [1, 1, 1, 2, 2, 2, 0, 1, 0, 2, 2, 2, 1, 1, 1],
-    [1, 1, 0, 1, 0, 1, 2, 1, 2, 1, 0, 1, 0, 1, 1],
-    [1, 0, 2, 2, 2, 2, 0, 1, 0, 2, 2, 2, 2, 0, 1],
-    [1, 2, 1, 2, 1, 0, 2, 1, 2, 0, 1, 2, 1, 2, 1],
-    [1, 2, 2, 0, 2, 2, 2, 1, 2, 2, 2, 0, 2, 2, 1],
-    [1, 0, 1, 2, 1, 2, 0, 1, 0, 2, 1, 2, 1, 0, 1],
-    [1, 0, 0, 2, 2, 0, 1, 1, 1, 0, 2, 2, 0, 0, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [1,0,0,2,2,2,0,0,0,2,2,2,0,0,1],
+    [1,0,1,2,1,2,1,0,1,2,1,2,1,0,1],
+    [1,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+    [1,2,1,2,1,2,1,2,1,2,1,2,1,2,1],
+    [1,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+    [1,0,1,2,1,0,1,0,1,0,1,2,1,0,1],
+    [1,0,0,2,2,0,0,0,0,0,2,2,0,0,1],
+    [1,0,1,2,1,0,1,0,1,0,1,2,1,0,1],
+    [1,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+    [1,2,1,2,1,2,1,2,1,2,1,2,1,2,1],
+    [1,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+    [1,0,1,2,1,2,1,0,1,2,1,2,1,0,1],
+    [1,0,0,2,2,2,0,0,0,2,2,2,0,0,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
   ],
   patrit: [
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 0, 0, 2, 2, 2, 1, 2, 1, 2, 2, 2, 0, 0, 1],
-    [1, 0, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 0, 1],
-    [1, 2, 1, 2, 2, 2, 2, 0, 2, 2, 2, 2, 1, 2, 1],
-    [1, 2, 2, 2, 1, 1, 2, 1, 2, 1, 1, 2, 2, 2, 1],
-    [1, 2, 1, 2, 1, 0, 0, 2, 0, 0, 1, 2, 1, 2, 1],
-    [1, 1, 2, 2, 2, 0, 1, 1, 1, 0, 2, 2, 2, 1, 1],
-    [1, 2, 1, 0, 1, 2, 1, 1, 1, 2, 1, 0, 1, 2, 1],
-    [1, 1, 2, 2, 2, 0, 1, 1, 1, 0, 2, 2, 2, 1, 1],
-    [1, 2, 1, 2, 1, 0, 0, 2, 0, 0, 1, 2, 1, 2, 1],
-    [1, 2, 2, 2, 1, 1, 2, 1, 2, 1, 1, 2, 2, 2, 1],
-    [1, 2, 1, 2, 2, 2, 2, 0, 2, 2, 2, 2, 1, 2, 1],
-    [1, 0, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 0, 1],
-    [1, 0, 0, 2, 2, 2, 1, 2, 1, 2, 2, 2, 0, 0, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [1,0,0,0,0,1,2,2,2,1,0,0,0,0,1],
+    [1,0,1,1,0,1,2,1,2,1,0,1,1,0,1],
+    [1,0,1,1,0,0,2,2,2,0,0,1,1,0,1],
+    [1,0,0,0,0,1,1,0,1,1,0,0,0,0,1],
+    [1,1,1,0,1,2,2,2,2,2,1,0,1,1,1],
+    [1,2,2,2,1,2,1,2,1,2,1,2,2,2,1],
+    [1,2,1,2,0,2,2,0,2,2,0,2,1,2,1],
+    [1,2,2,2,1,2,1,2,1,2,1,2,2,2,1],
+    [1,1,1,0,1,2,2,2,2,2,1,0,1,1,1],
+    [1,0,0,0,0,1,1,0,1,1,0,0,0,0,1],
+    [1,0,1,1,0,0,2,2,2,0,0,1,1,0,1],
+    [1,0,1,1,0,1,2,1,2,1,0,1,1,0,1],
+    [1,0,0,0,0,1,2,2,2,1,0,0,0,0,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
   ],
   factory: [
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 1],
-    [1, 0, 1, 1, 2, 1, 2, 1, 2, 1, 2, 1, 1, 0, 1],
-    [1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1],
-    [1, 2, 2, 2, 1, 2, 1, 2, 1, 2, 1, 2, 2, 2, 1],
-    [1, 2, 1, 2, 2, 2, 2, 1, 2, 2, 2, 2, 1, 2, 1],
-    [1, 2, 2, 2, 1, 2, 1, 2, 1, 2, 1, 2, 2, 2, 1],
-    [1, 2, 1, 2, 2, 1, 2, 0, 2, 1, 2, 2, 1, 2, 1],
-    [1, 2, 2, 2, 1, 2, 1, 2, 1, 2, 1, 2, 2, 2, 1],
-    [1, 2, 1, 2, 2, 2, 2, 1, 2, 2, 2, 2, 1, 2, 1],
-    [1, 2, 2, 2, 1, 2, 1, 2, 1, 2, 1, 2, 2, 2, 1],
-    [1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1],
-    [1, 0, 1, 1, 2, 1, 2, 1, 2, 1, 2, 1, 1, 0, 1],
-    [1, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [1,0,0,2,1,2,0,0,0,2,1,2,0,0,1],
+    [1,0,1,2,1,2,1,1,1,2,1,2,1,0,1],
+    [1,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+    [1,1,1,2,1,1,1,0,1,1,1,2,1,1,1],
+    [1,2,2,2,2,0,2,2,2,0,2,2,2,2,1],
+    [1,0,1,2,1,2,1,0,1,2,1,2,1,0,1],
+    [1,0,1,2,0,2,0,0,0,2,0,2,1,0,1],
+    [1,0,1,2,1,2,1,0,1,2,1,2,1,0,1],
+    [1,2,2,2,2,0,2,2,2,0,2,2,2,2,1],
+    [1,1,1,2,1,1,1,0,1,1,1,2,1,1,1],
+    [1,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+    [1,0,1,2,1,2,1,1,1,2,1,2,1,0,1],
+    [1,0,0,2,1,2,0,0,0,2,1,2,0,0,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
   ]
 };
 
-let currentMapKey = 'camp';
-let map = [];
+let selectedMapName = 'camp';
+let map = JSON.parse(JSON.stringify(MAP_TEMPLATES[selectedMapName]));
 let players = {};
-let bombs = [];
-let explosions = [];
-let isGameOver = false;
+let playerColors = ['#FF4136', '#0074D9', '#2ECC40', '#FFDC00'];
+let spawnPoints = [
+  { x: 1, y: 1 },
+  { x: 13, y: 13 },
+  { x: 13, y: 1 },
+  { x: 1, y: 13 }
+];
+
 let isGameStarted = false;
+let explosions = [];
 
-function loadSelectedMap(key) {
-  if (MAP_PRESETS[key]) {
-    currentMapKey = key;
-    map = JSON.parse(JSON.stringify(MAP_PRESETS[key]));
-  }
+function cloneMap(templateName) {
+  return JSON.parse(JSON.stringify(MAP_TEMPLATES[templateName]));
 }
-
-function resetGameRound() {
-  loadSelectedMap(currentMapKey);
-  bombs = [];
-  explosions = [];
-  isGameOver = false;
-
-  Object.values(players).forEach(p => {
-    const isFirst = p.pNum === 1;
-    p.x = isFirst ? 1 : COLS - 2;
-    p.y = isFirst ? 1 : ROWS - 2;
-    p.maxBombs = 1;
-    p.bombRange = 1;
-    p.speed = 1;
-    p.activeBombs = 0;
-    p.isAlive = true;
-    p.lastMoveTime = 0;
-  });
-}
-
-loadSelectedMap('camp');
 
 io.on('connection', (socket) => {
-  const playerKeys = Object.keys(players);
-  if (playerKeys.length >= 2) {
-    socket.emit('full', '방이 가득 찼습니다.');
-    socket.disconnect();
-    return;
-  }
+  console.log(`플레이어 접속: ${socket.id}`);
 
-  const isFirst = playerKeys.length === 0 || !Object.values(players).some(p => p.pNum === 1);
-  const assignedNum = isFirst ? 1 : 2;
+  const pNum = Object.keys(players).length + 1;
+  const spawn = spawnPoints[(pNum - 1) % spawnPoints.length];
 
   players[socket.id] = {
     id: socket.id,
-    pNum: assignedNum,
-    x: assignedNum === 1 ? 1 : COLS - 2,
-    y: assignedNum === 1 ? 1 : ROWS - 2,
-    color: assignedNum === 1 ? '#2ECC71' : '#E74C3C',
+    pNum: pNum,
+    x: spawn.x,
+    y: spawn.y,
+    color: playerColors[(pNum - 1) % playerColors.length],
     maxBombs: 1,
+    currentBombs: 0,
     bombRange: 1,
     speed: 1,
-    activeBombs: 0,
-    isAlive: true,
-    lastMoveTime: 0
+    isAlive: true
   };
 
   socket.emit('init', {
     id: socket.id,
-    map,
-    players,
-    selectedMap: currentMapKey,
-    isGameStarted
+    map: map,
+    players: players,
+    isGameStarted: isGameStarted,
+    selectedMap: selectedMapName
   });
 
   socket.broadcast.emit('playerJoined', players[socket.id]);
 
-  socket.on('selectMap', (mapKey) => {
-    if (!isGameStarted && players[socket.id]?.pNum === 1) {
-      loadSelectedMap(mapKey);
-      io.emit('mapChanged', { selectedMap: currentMapKey, map });
+  socket.on('selectMap', (mapName) => {
+    if (players[socket.id] && players[socket.id].pNum === 1 && !isGameStarted) {
+      if (MAP_TEMPLATES[mapName]) {
+        selectedMapName = mapName;
+        map = cloneMap(selectedMapName);
+        io.emit('mapChanged', { selectedMap: selectedMapName, map: map });
+      }
     }
   });
 
   socket.on('startGame', () => {
-    if (!isGameStarted && players[socket.id]?.pNum === 1) {
+    if (players[socket.id] && players[socket.id].pNum === 1 && !isGameStarted) {
       isGameStarted = true;
-      resetGameRound();
-      io.emit('gameStarted', { map, players });
+      map = cloneMap(selectedMapName);
+      
+      Object.keys(players).forEach((id, idx) => {
+        const sp = spawnPoints[idx % spawnPoints.length];
+        players[id].x = sp.x;
+        players[id].y = sp.y;
+        players[id].maxBombs = 1;
+        players[id].currentBombs = 0;
+        players[id].bombRange = 1;
+        players[id].speed = 1;
+        players[id].isAlive = true;
+      });
+
+      io.emit('gameStarted', { map: map, players: players });
     }
   });
 
+  // 🏃‍♂️ 서버 측 방향 이동 검사 로직 철거 -> 클라이언트 이동 신호 수용 및 동기화
   socket.on('move', (dir) => {
-    if (!isGameStarted || isGameOver) return;
-    const p = players[socket.id];
-    if (!p || !p.isAlive) return;
+    const player = players[socket.id];
+    if (!player || !player.isAlive || !isGameStarted) return;
 
-    let nx = p.x;
-    let ny = p.y;
-    if (dir === 'up') ny--;
-    if (dir === 'down') ny++;
-    if (dir === 'left') nx--;
-    if (dir === 'right') nx++;
+    let nx = player.x;
+    let ny = player.y;
 
+    if (dir === 'up') ny -= 1;
+    if (dir === 'down') ny += 1;
+    if (dir === 'left') nx -= 1;
+    if (dir === 'right') nx += 1;
+
+    // 타일 경계선 내에 존재할 경우 위치 업데이트 (클라이언트 부드러운 위치 수용)
     if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS) {
-      const target = map[ny][nx];
-      if (target !== TILE.SOLID_BLOCK && target !== TILE.SOFT_BLOCK && target !== TILE.BOMB) {
-        p.x = nx;
-        p.y = ny;
+      player.x = nx;
+      player.y = ny;
+    }
 
-        // 아이템 획득 처리
-        if (target === TILE.ITEM_BOMB) {
-          p.maxBombs++;
-          map[ny][nx] = TILE.EMPTY;
-        } else if (target === TILE.ITEM_RANGE) {
-          p.bombRange++;
-          map[ny][nx] = TILE.EMPTY;
-        } else if (target === TILE.ITEM_SPEED) {
-          p.speed = Math.min(5, p.speed + 1); // 최대 스피드 5 제한
-          map[ny][nx] = TILE.EMPTY;
-        }
+    // 아이템 획득 처리
+    const tileX = Math.round(player.x);
+    const tileY = Math.round(player.y);
+    if (map[tileY] && map[tileY][tileX]) {
+      const currentTile = map[tileY][tileX];
+      if (currentTile === TILE.ITEM_BOMB) {
+        player.maxBombs = Math.min(player.maxBombs + 1, 6);
+        map[tileY][tileX] = TILE.EMPTY;
+      } else if (currentTile === TILE.ITEM_RANGE) {
+        player.bombRange = Math.min(player.bombRange + 1, 8);
+        map[tileY][tileX] = TILE.EMPTY;
+      } else if (currentTile === TILE.ITEM_SPEED) {
+        player.speed = Math.min(player.speed + 1, 5);
+        map[tileY][tileX] = TILE.EMPTY;
       }
     }
   });
 
   socket.on('placeBomb', () => {
-    if (!isGameStarted || isGameOver) return;
-    const p = players[socket.id];
-    if (!p || !p.isAlive) return;
+    const player = players[socket.id];
+    if (!player || !player.isAlive || !isGameStarted) return;
 
-    if (p.activeBombs < p.maxBombs && map[p.y][p.x] !== TILE.BOMB) {
-      p.activeBombs++;
-      map[p.y][p.x] = TILE.BOMB;
-      bombs.push({
-        ownerId: socket.id,
-        x: p.x,
-        y: p.y,
-        range: p.bombRange,
-        createdAt: Date.now(),
-        timer: 3000
-      });
+    if (player.currentBombs >= player.maxBombs) return;
+
+    const bx = Math.round(player.x);
+    const by = Math.round(player.y);
+
+    if (map[by] && map[by][bx] === TILE.EMPTY) {
+      map[by][bx] = TILE.BOMB;
+      player.currentBombs++;
+
+      setTimeout(() => {
+        explodeBomb(bx, by, player.bombRange, socket.id);
+      }, 3000);
     }
   });
 
   socket.on('restartGame', () => {
     isGameStarted = false;
-    resetGameRound();
-    io.emit('returnToLobby', { selectedMap: currentMapKey, map, players });
+    map = cloneMap(selectedMapName);
+    io.emit('returnToLobby', { map: map, players: players });
   });
 
   socket.on('disconnect', () => {
+    console.log(`플레이어 퇴장: ${socket.id}`);
     delete players[socket.id];
     io.emit('playerLeft', socket.id);
-    if (Object.keys(players).length === 0) {
-      isGameStarted = false;
-      resetGameRound();
-    }
   });
 });
 
-// 게임 업데이트 루프
-setInterval(() => {
-  if (!isGameStarted) return;
+function explodeBomb(bx, by, range, ownerId) {
+  if (map[by] && map[by][bx] !== TILE.BOMB) return;
 
-  const now = Date.now();
-  explosions = explosions.filter(exp => now - exp.createdAt < 500);
-
-  if (!isGameOver) {
-    bombs = bombs.filter(bomb => {
-      if (now - bomb.createdAt >= bomb.timer) {
-        map[bomb.y][bomb.x] = TILE.EMPTY;
-        if (players[bomb.ownerId]) {
-          players[bomb.ownerId].activeBombs = Math.max(0, players[bomb.ownerId].activeBombs - 1);
-        }
-
-        const dirs = [[0,0], [1,0], [-1,0], [0,1], [0,-1]];
-        dirs.forEach(([dx, dy]) => {
-          for (let i = (dx === 0 && dy === 0 ? 0 : 1); i <= bomb.range; i++) {
-            const nx = bomb.x + dx * i;
-            const ny = bomb.y + dy * i;
-
-            if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) break;
-            if (map[ny][nx] === TILE.SOLID_BLOCK) break;
-
-            explosions.push({ x: nx, y: ny, createdAt: now });
-
-            // 파괴 가능한 블록 파괴 시 아이템 드롭 확률
-            if (map[ny][nx] === TILE.SOFT_BLOCK) {
-              const rand = Math.random();
-              if (rand < 0.25) map[ny][nx] = TILE.ITEM_BOMB;      // 25% 확률로 물풍선
-              else if (rand < 0.50) map[ny][nx] = TILE.ITEM_RANGE; // 25% 확률로 물줄기
-              else if (rand < 0.70) map[ny][nx] = TILE.ITEM_SPEED; // 20% 확률로 스피드
-              else map[ny][nx] = TILE.EMPTY;                       // 30% 확률로 빈 공간
-              break;
-            }
-
-            Object.values(players).forEach(p => {
-              if (p.isAlive && p.x === nx && p.y === ny) {
-                p.isAlive = false;
-                isGameOver = true;
-                io.emit('gameOver', { winner: p.pNum === 1 ? 'Player 2' : 'Player 1' });
-              }
-            });
-          }
-        });
-
-        return false;
-      }
-      return true;
-    });
+  if (players[ownerId]) {
+    players[ownerId].currentBombs = Math.max(0, players[ownerId].currentBombs - 1);
   }
 
-  io.emit('gameState', { map, players, explosions, isGameOver });
+  map[by][bx] = TILE.EMPTY;
+  const currentExplosions = [{ x: bx, y: by }];
+
+  const directions = [
+    { x: 0, y: -1 },
+    { x: 0, y: 1 },
+    { x: -1, y: 0 },
+    { x: 1, y: 0 }
+  ];
+
+  directions.forEach(dir => {
+    for (let i = 1; i <= range; i++) {
+      const ex = bx + dir.x * i;
+      const ey = by + dir.y * i;
+
+      if (ex < 0 || ex >= COLS || ey < 0 || ey >= ROWS) break;
+
+      const tile = map[ey][ex];
+
+      if (tile === TILE.SOLID_BLOCK) {
+        break;
+      }
+
+      currentExplosions.push({ x: ex, y: ey });
+
+      if (tile === TILE.SOFT_BLOCK) {
+        const rand = Math.random();
+        if (rand < 0.25) map[ey][ex] = TILE.ITEM_BOMB;
+        else if (rand < 0.50) map[ey][ex] = TILE.ITEM_RANGE;
+        else if (rand < 0.70) map[ey][ex] = TILE.ITEM_SPEED;
+        else map[ey][ex] = TILE.EMPTY;
+        break;
+      }
+
+      if ([TILE.ITEM_BOMB, TILE.ITEM_RANGE, TILE.ITEM_SPEED].includes(tile)) {
+        map[ey][ex] = TILE.EMPTY;
+        break;
+      }
+    }
+  });
+
+  explosions.push(...currentExplosions);
+
+  // 폭발에 맞은 플레이어 체크
+  Object.values(players).forEach(p => {
+    if (!p.isAlive) return;
+    const px = Math.round(p.x);
+    const py = Math.round(p.y);
+
+    const hit = currentExplosions.some(e => e.x === px && e.y === py);
+    if (hit) {
+      p.isAlive = false;
+    }
+  });
+
+  setTimeout(() => {
+    explosions = explosions.filter(e => !currentExplosions.includes(e));
+  }, 400);
+
+  checkGameOver();
+}
+
+function checkGameOver() {
+  const alivePlayers = Object.values(players).filter(p => p.isAlive);
+
+  if (alivePlayers.length <= 1 && Object.keys(players).length > 1) {
+    const winnerText = alivePlayers.length === 1 ? `Player ${alivePlayers[0].pNum}` : '무승부';
+    io.emit('gameOver', { winner: winnerText });
+  }
+}
+
+// 60FPS 서버 루프 (상태 브로드캐스트)
+setInterval(() => {
+  io.emit('gameState', {
+    map: map,
+    players: players,
+    explosions: explosions
+  });
 }, 1000 / 60);
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => {
+  console.log(`서버 구동 완료: http://localhost:${PORT}`);
+});
