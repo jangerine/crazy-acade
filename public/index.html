@@ -78,7 +78,6 @@
       text-shadow: 1px 1px 2px #000;
     }
 
-    /* 🎮 크아 게임기 프레임 레이아웃 */
     #arcade-frame {
       display: flex;
       background: #1e293b;
@@ -89,7 +88,6 @@
       gap: 14px;
     }
 
-    /* 좌/우 유저 패널 */
     .user-panel {
       width: 135px;
       background: #0f172a;
@@ -137,7 +135,6 @@
       border: 1px solid #334155;
     }
 
-    /* 메인 캔버스 뷰 */
     #canvas-container {
       position: relative;
       border: 4px solid #0f172a;
@@ -150,7 +147,6 @@
       background-color: #000;
     }
 
-    /* 승리/패배 모달 */
     #overlay {
       position: absolute;
       top: 0; left: 0; width: 100%; height: 100%;
@@ -211,7 +207,7 @@
       </div>
     </div>
 
-    <!-- 맵 캔버스 (크아 규격 15x15) -->
+    <!-- 맵 캔버스 -->
     <div id="canvas-container">
       <canvas id="gameCanvas" width="540" height="540"></canvas>
 
@@ -307,6 +303,8 @@
     socket.on('gameState', (state) => {
       gameState.map = state.map;
       gameState.explosions = state.explosions;
+
+      // 사라진 물풍선은 통과 가능 목록에서 제거
       myActiveBombs = myActiveBombs.filter(b => gameState.map[b.r] && gameState.map[b.r][b.c] === TILE.BOMB);
 
       Object.keys(state.players).forEach(id => {
@@ -382,21 +380,27 @@
       });
     }
 
-    // 💣 스페이스바 매끄러운 설치 처리
+    // 💣 키보드 이벤트 (스페이스바 즉시 설치)
     window.addEventListener('keydown', (e) => {
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
-      
-      if (e.key === ' ') {
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
+        e.preventDefault();
+      }
+
+      if (e.key === ' ' || e.code === 'Space') {
         if (!isGameStarted || !localPositions[myId]) return;
+        const me = gameState.players[myId];
+        if (!me || !me.isAlive) return;
+
         const myPos = localPositions[myId];
         const centerCol = Math.min(COLS - 1, Math.max(0, Math.floor((myPos.x + TILE_SIZE / 2) / TILE_SIZE)));
         const centerRow = Math.min(ROWS - 1, Math.max(0, Math.floor((myPos.y + TILE_SIZE / 2) / TILE_SIZE)));
 
-        if (gameState.map[centerRow] && gameState.map[centerRow][centerCol] !== TILE.BOMB) {
-          if (!myActiveBombs.some(b => b.r === centerRow && b.c === centerCol)) {
-            myActiveBombs.push({ r: centerRow, c: centerCol });
-          }
-          socket.emit('placeBomb');
+        // 서버로 폭탄 설치 요청 즉시 전송
+        socket.emit('placeBomb');
+
+        // 내 통과 가능 폭탄 목록 등록
+        if (!myActiveBombs.some(b => b.r === centerRow && b.c === centerCol)) {
+          myActiveBombs.push({ r: centerRow, c: centerCol });
         }
         return;
       }
@@ -417,6 +421,12 @@
       const speedLevel = me.speed || 1;
       const moveSpeed = 2.0 + (speedLevel - 1) * 0.4;
 
+      const hitSize = TILE_SIZE * 0.65;
+      const margin = (TILE_SIZE - hitSize) / 2;
+
+      // 움직이든 안 움직이든 현재 플레이어가 통과 완료한 폭탄 감지
+      checkBombOverlap(myPos.x + margin, myPos.y + margin, hitSize);
+
       let dx = 0;
       let dy = 0;
 
@@ -424,10 +434,6 @@
       if (keys.ArrowDown) dy += moveSpeed;
       if (keys.ArrowLeft) dx -= moveSpeed;
       if (keys.ArrowRight) dx += moveSpeed;
-
-      const hitSize = TILE_SIZE * 0.65;
-      const margin = (TILE_SIZE - hitSize) / 2;
-      checkBombOverlap(myPos.x + margin, myPos.y + margin, hitSize);
 
       if (dx !== 0 || dy !== 0) {
         let nextX = myPos.x + dx;
@@ -444,7 +450,7 @@
         myPos.y = Math.max(0, Math.min(canvas.height - TILE_SIZE, myPos.y));
 
         const now = Date.now();
-        if (now - lastServerSyncTime > 70) {
+        if (now - lastServerSyncTime > 60) {
           let dir = null;
           if (keys.ArrowUp) dir = 'up';
           else if (keys.ArrowDown) dir = 'down';
@@ -456,6 +462,7 @@
         }
       }
 
+      // 타 플레이어 위치 보정
       Object.keys(localPositions).forEach(id => {
         if (id !== myId) {
           const pos = localPositions[id];
@@ -473,6 +480,7 @@
       const minRow = Math.floor(y / TILE_SIZE);
       const maxRow = Math.floor((y + size - 1) / TILE_SIZE);
 
+      // 플레이어가 해당 폭탄 타일을 완전히 벗어나는 순간 통과 가능 목록에서 빠짐
       myActiveBombs = myActiveBombs.filter(b => {
         const overlaps = (r, c) => r >= minRow && r <= maxRow && c >= minCol && c <= maxCol;
         return overlaps(b.r, b.c);
@@ -508,7 +516,6 @@
       requestAnimationFrame(clientLoop);
     }
 
-    // 🎨 크아 원작 그래픽 및 테마 배경
     function drawBackground() {
       const theme = mapSelect.value;
       for (let r = 0; r < ROWS; r++) {
@@ -528,14 +535,12 @@
       }
     }
 
-    // 🎨 파괴 불가 장애물
     function drawSolidBlock(c, r) {
       const x = c * TILE_SIZE;
       const y = r * TILE_SIZE;
       const theme = mapSelect.value;
 
       if (theme === 'camp') {
-        // 입체 빨간 텐트
         ctx.fillStyle = '#dc2626';
         ctx.fillRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4);
         ctx.fillStyle = '#ef4444';
@@ -548,7 +553,6 @@
         ctx.fillStyle = '#fef08a';
         ctx.fillRect(x + TILE_SIZE / 2 - 3, y + TILE_SIZE / 2, 6, TILE_SIZE / 2 - 2);
       } else if (theme === 'patrit') {
-        // 단단한 사막 바위
         ctx.fillStyle = '#78350f';
         ctx.beginPath();
         ctx.roundRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4, 8);
@@ -558,7 +562,6 @@
         ctx.arc(x + TILE_SIZE / 2, y + TILE_SIZE / 2, TILE_SIZE / 3, 0, Math.PI * 2);
         ctx.fill();
       } else {
-        // 강철 구조 블록
         ctx.fillStyle = '#0f172a';
         ctx.fillRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4);
         ctx.strokeStyle = '#38bdf8';
@@ -567,14 +570,12 @@
       }
     }
 
-    // 🎨 파괴 가능 상자/통나무
     function drawSoftBlock(c, r) {
       const x = c * TILE_SIZE;
       const y = r * TILE_SIZE;
       const theme = mapSelect.value;
 
       if (theme === 'camp') {
-        // 캠프 통나무
         ctx.fillStyle = '#ca8a04';
         ctx.beginPath();
         ctx.roundRect(x + 3, y + 3, TILE_SIZE - 6, TILE_SIZE - 6, 6);
@@ -583,7 +584,6 @@
         ctx.lineWidth = 2;
         ctx.stroke();
       } else {
-        // 나무 상자
         ctx.fillStyle = '#d97706';
         ctx.fillRect(x + 3, y + 3, TILE_SIZE - 6, TILE_SIZE - 6);
         ctx.strokeStyle = '#78350f';
@@ -595,20 +595,17 @@
       }
     }
 
-    // 🎨 왕물풍선 그래픽
     function drawBomb(c, r) {
       const x = c * TILE_SIZE + TILE_SIZE / 2;
       const y = r * TILE_SIZE + TILE_SIZE / 2;
       const scale = 1 + Math.sin(Date.now() / 120) * 0.08;
       const radius = (TILE_SIZE / 2.3) * scale;
 
-      // 그림자
       ctx.fillStyle = 'rgba(0,0,0,0.3)';
       ctx.beginPath();
       ctx.ellipse(x, y + radius * 0.7, radius * 0.8, radius * 0.3, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // 물풍선 본체
       const grad = ctx.createRadialGradient(x - radius * 0.3, y - radius * 0.3, radius * 0.1, x, y, radius);
       grad.addColorStop(0, '#60a5fa');
       grad.addColorStop(0.5, '#3b82f6');
@@ -623,14 +620,12 @@
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      // 하얀 빛 반사점
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
       ctx.arc(x - radius * 0.35, y - radius * 0.35, radius * 0.25, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // 🎨 아이템 카드
     function drawItem(c, r, bgColor, symbol) {
       const x = c * TILE_SIZE;
       const y = r * TILE_SIZE;
@@ -650,19 +645,16 @@
       ctx.fillText(symbol, x + TILE_SIZE / 2, y + TILE_SIZE / 2 + floatY);
     }
 
-    // 🎨 캐릭터 스킨
     function drawPlayer(p, pos) {
       const x = pos.x + TILE_SIZE / 2;
       const y = pos.y + TILE_SIZE / 2;
       const radius = TILE_SIZE / 2.4;
 
-      // 발밑 그림자
       ctx.fillStyle = 'rgba(0,0,0,0.3)';
       ctx.beginPath();
       ctx.ellipse(x, y + radius * 0.8, radius * 0.7, radius * 0.3, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // 대가리/모자
       ctx.fillStyle = p.color;
       ctx.beginPath();
       ctx.arc(x, y, radius, 0, Math.PI * 2);
@@ -671,20 +663,17 @@
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      // 크아 특유 피부 영역
       ctx.fillStyle = '#ffe0bd';
       ctx.beginPath();
       ctx.arc(x, y + 2, radius * 0.65, 0, Math.PI * 2);
       ctx.fill();
 
-      // 눈
       ctx.fillStyle = '#000000';
       ctx.beginPath();
       ctx.arc(x - 5, y, 2.5, 0, Math.PI * 2);
       ctx.arc(x + 5, y, 2.5, 0, Math.PI * 2);
       ctx.fill();
 
-      // 볼터치
       ctx.fillStyle = '#f43f5e';
       ctx.beginPath();
       ctx.arc(x - 8, y + 4, 2.5, 0, Math.PI * 2);
@@ -710,7 +699,6 @@
         }
       }
 
-      // 폭발 물기둥 애니메이션
       if (gameState.explosions) {
         ctx.fillStyle = 'rgba(56, 189, 248, 0.85)';
         gameState.explosions.forEach(exp => {
@@ -720,7 +708,6 @@
         });
       }
 
-      // 플레이어
       if (gameState.players) {
         Object.values(gameState.players).forEach(p => {
           if (!p.isAlive) return;
