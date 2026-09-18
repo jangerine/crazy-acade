@@ -8,7 +8,7 @@
   <style>
     * { box-sizing: border-box; user-select: none; }
     body {
-      background: #0f172a;
+      background: #0b1329;
       color: #fff;
       font-family: 'Jua', sans-serif;
       display: flex;
@@ -20,35 +20,37 @@
       overflow: hidden;
     }
 
-    .title-container {
+    /* 로비 & 컨트롤러 헤더 */
+    #header-container {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 10px;
-      margin-bottom: 8px;
+      gap: 8px;
+      margin-bottom: 12px;
     }
+
     h1 {
       margin: 0;
-      font-size: 38px;
+      font-size: 34px;
       color: #38bdf8;
-      text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 6px 0 #0284c7;
+      text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 4px 0 #0284c7;
       letter-spacing: 2px;
     }
 
     #lobby-controls {
       display: flex;
       gap: 12px;
-      margin-bottom: 12px;
       align-items: center;
       background: #1e293b;
-      padding: 8px 24px;
+      padding: 6px 20px;
       border-radius: 30px;
       border: 3px solid #334155;
       box-shadow: 0 4px 15px rgba(0,0,0,0.5);
     }
     select, button {
       font-family: 'Jua', sans-serif;
-      font-size: 16px;
-      padding: 6px 16px;
+      font-size: 15px;
+      padding: 6px 14px;
       border-radius: 20px;
       border: none;
       outline: none;
@@ -72,73 +74,65 @@
     #start-btn:disabled { background: #475569; color: #94a3b8; box-shadow: none; cursor: not-allowed; }
 
     #status {
-      margin-bottom: 10px;
-      font-size: 15px;
+      font-size: 14px;
       color: #facc15;
       text-shadow: 1px 1px 2px #000;
     }
 
+    /* 🎮 메인 아케이드 프레임 */
     #arcade-frame {
       display: flex;
+      flex-direction: column;
+      align-items: center;
       background: #1e293b;
       border: 6px solid #334155;
       border-radius: 20px;
-      padding: 14px;
+      padding: 12px;
       box-shadow: 0 20px 40px rgba(0,0,0,0.8);
-      gap: 14px;
+      gap: 10px;
     }
 
-    .user-panel {
-      width: 135px;
+    /* 내 캐릭터 스탯 상단 바 */
+    #my-status-bar {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       background: #0f172a;
-      border: 3px solid #334155;
-      border-radius: 16px;
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
+      border: 2px solid #334155;
+      border-radius: 12px;
+      padding: 6px 16px;
     }
-    .panel-title {
+
+    .player-tag {
       font-size: 18px;
+      font-weight: bold;
       color: #38bdf8;
-      border-bottom: 2px solid #334155;
-      width: 100%;
-      text-align: center;
-      padding-bottom: 6px;
-    }
-    .avatar-box {
-      width: 75px;
-      height: 75px;
-      background: #1e293b;
-      border: 3px solid #38bdf8;
-      border-radius: 50%;
       display: flex;
       align-items: center;
-      justify-content: center;
-      font-size: 38px;
-      box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+      gap: 6px;
     }
-    .stat-list {
-      width: 100%;
+
+    .my-stats {
       display: flex;
-      flex-direction: column;
-      gap: 8px;
+      gap: 16px;
       font-size: 15px;
     }
-    .stat-item {
-      display: flex;
-      justify-content: space-between;
+    .stat-badge {
       background: #1e293b;
-      padding: 5px 10px;
-      border-radius: 10px;
+      padding: 3px 10px;
+      border-radius: 8px;
       border: 1px solid #334155;
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
 
+    /* 메인 캔버스 뷰컨테이너 */
     #canvas-container {
       position: relative;
       border: 4px solid #0f172a;
-      border-radius: 12px;
+      border-radius: 10px;
       overflow: hidden;
       box-shadow: 0 0 20px rgba(0,0,0,0.5);
     }
@@ -147,6 +141,7 @@
       background-color: #000;
     }
 
+    /* 결과 승리/패배 모달 */
     #overlay {
       position: absolute;
       top: 0; left: 0; width: 100%; height: 100%;
@@ -159,7 +154,7 @@
       z-index: 10;
     }
     #winner-text {
-      font-size: 38px;
+      font-size: 36px;
       color: #facc15;
       margin-bottom: 20px;
       text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
@@ -167,8 +162,8 @@
     .lobby-btn {
       background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
       color: white;
-      padding: 10px 26px;
-      font-size: 18px;
+      padding: 10px 24px;
+      font-size: 17px;
       font-family: 'Jua', sans-serif;
       border: none;
       border-radius: 20px;
@@ -179,52 +174,42 @@
 </head>
 <body>
 
-  <div class="title-container">
+  <div id="header-container">
     <h1>CRAZY ARCADE BnB</h1>
-  </div>
 
-  <div id="lobby-controls">
-    <label for="mapSelect">⛺ 맵 선택:</label>
-    <select id="mapSelect" onchange="onMapChange()">
-      <option value="camp">캠프 08 (Camp)</option>
-      <option value="patrit">패트릿 14 (Patrit)</option>
-      <option value="factory">팩토리 07 (Factory)</option>
-    </select>
-    <button id="start-btn" onclick="startGame()">START</button>
-  </div>
+    <div id="lobby-controls">
+      <label for="mapSelect">⛺ 맵 선택:</label>
+      <select id="mapSelect" onchange="onMapChange()">
+        <option value="camp">캠프 08 (Camp)</option>
+        <option value="patrit">패트릿 14 (Patrit)</option>
+        <option value="factory">팩토리 07 (Factory)</option>
+      </select>
+      <button id="start-btn" onclick="startGame()">START</button>
+    </div>
 
-  <div id="status">서버 연결 중...</div>
+    <div id="status">서버 연결 중...</div>
+  </div>
 
   <div id="arcade-frame">
-    <!-- P1 패널 -->
-    <div class="user-panel">
-      <div class="panel-title">PLAYER 1</div>
-      <div class="avatar-box" id="p1-avatar">🔴</div>
-      <div class="stat-list">
-        <div class="stat-item"><span>🎈 물풍선</span><span id="p1-bombs" style="color:#60a5fa">1</span></div>
-        <div class="stat-item"><span>🔥 물줄기</span><span id="p1-range" style="color:#f87171">1</span></div>
-        <div class="stat-item"><span>🛼 스피드</span><span id="p1-speed" style="color:#34d399">1</span></div>
+    <!-- 👤 내 정보 스탯 바 -->
+    <div id="my-status-bar">
+      <div class="player-tag" id="my-tag">
+        <span id="my-avatar">🔴</span> <span id="my-label">PLAYER 1</span>
+      </div>
+      <div class="my-stats">
+        <div class="stat-badge">🎈 폭탄 <span id="my-bombs" style="color:#60a5fa">1</span></div>
+        <div class="stat-badge">🔥 화력 <span id="my-range" style="color:#f87171">1</span></div>
+        <div class="stat-badge">🛼 속도 <span id="my-speed" style="color:#34d399">1</span></div>
       </div>
     </div>
 
-    <!-- 맵 캔버스 -->
+    <!-- 🎮 게임 캔버스 (크아 15x15 규격) -->
     <div id="canvas-container">
       <canvas id="gameCanvas" width="540" height="540"></canvas>
 
       <div id="overlay">
         <div id="winner-text">Player 1 승리!</div>
         <button class="lobby-btn" onclick="requestLobby()">대기실로 이동</button>
-      </div>
-    </div>
-
-    <!-- P2 패널 -->
-    <div class="user-panel">
-      <div class="panel-title">PLAYER 2</div>
-      <div class="avatar-box" id="p2-avatar">🔵</div>
-      <div class="stat-list">
-        <div class="stat-item"><span>🎈 물풍선</span><span id="p2-bombs" style="color:#60a5fa">1</span></div>
-        <div class="stat-item"><span>🔥 물줄기</span><span id="p2-range" style="color:#f87171">1</span></div>
-        <div class="stat-item"><span>🛼 스피드</span><span id="p2-speed" style="color:#34d399">1</span></div>
       </div>
     </div>
   </div>
@@ -304,7 +289,6 @@
       gameState.map = state.map;
       gameState.explosions = state.explosions;
 
-      // 사라진 물풍선은 통과 가능 목록에서 제거
       myActiveBombs = myActiveBombs.filter(b => gameState.map[b.r] && gameState.map[b.r][b.c] === TILE.BOMB);
 
       Object.keys(state.players).forEach(id => {
@@ -322,7 +306,7 @@
           }
         }
       });
-      updateHUD();
+      updateMyHUD();
     });
 
     socket.on('gameOver', (data) => {
@@ -366,21 +350,22 @@
       } else {
         statusDiv.innerText = `게임 진행 중 (Player ${me ? me.pNum : ''})`;
       }
+      updateMyHUD();
     }
 
-    function updateHUD() {
-      Object.values(gameState.players).forEach(p => {
-        const prefix = `p${p.pNum}`;
-        const bEl = document.getElementById(`${prefix}-bombs`);
-        const rEl = document.getElementById(`${prefix}-range`);
-        const sEl = document.getElementById(`${prefix}-speed`);
-        if (bEl) bEl.innerText = p.maxBombs;
-        if (rEl) rEl.innerText = p.bombRange;
-        if (sEl) sEl.innerText = p.speed || 1;
-      });
+    // 내 스탯 전용 상단 바 업데이트
+    function updateMyHUD() {
+      const me = gameState.players[myId];
+      if (!me) return;
+
+      document.getElementById('my-avatar').innerText = me.pNum === 1 ? '🔴' : '🔵';
+      document.getElementById('my-label').innerText = `PLAYER ${me.pNum}`;
+      document.getElementById('my-bombs').innerText = me.maxBombs;
+      document.getElementById('my-range').innerText = me.bombRange;
+      document.getElementById('my-speed').innerText = me.speed || 1;
     }
 
-    // 💣 키보드 이벤트 (스페이스바 즉시 설치)
+    // 💣 스페이스바 설치
     window.addEventListener('keydown', (e) => {
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
         e.preventDefault();
@@ -395,10 +380,8 @@
         const centerCol = Math.min(COLS - 1, Math.max(0, Math.floor((myPos.x + TILE_SIZE / 2) / TILE_SIZE)));
         const centerRow = Math.min(ROWS - 1, Math.max(0, Math.floor((myPos.y + TILE_SIZE / 2) / TILE_SIZE)));
 
-        // 서버로 폭탄 설치 요청 즉시 전송
         socket.emit('placeBomb');
 
-        // 내 통과 가능 폭탄 목록 등록
         if (!myActiveBombs.some(b => b.r === centerRow && b.c === centerCol)) {
           myActiveBombs.push({ r: centerRow, c: centerCol });
         }
@@ -424,7 +407,6 @@
       const hitSize = TILE_SIZE * 0.65;
       const margin = (TILE_SIZE - hitSize) / 2;
 
-      // 움직이든 안 움직이든 현재 플레이어가 통과 완료한 폭탄 감지
       checkBombOverlap(myPos.x + margin, myPos.y + margin, hitSize);
 
       let dx = 0;
@@ -462,7 +444,6 @@
         }
       }
 
-      // 타 플레이어 위치 보정
       Object.keys(localPositions).forEach(id => {
         if (id !== myId) {
           const pos = localPositions[id];
@@ -480,7 +461,6 @@
       const minRow = Math.floor(y / TILE_SIZE);
       const maxRow = Math.floor((y + size - 1) / TILE_SIZE);
 
-      // 플레이어가 해당 폭탄 타일을 완전히 벗어나는 순간 통과 가능 목록에서 빠짐
       myActiveBombs = myActiveBombs.filter(b => {
         const overlaps = (r, c) => r >= minRow && r <= maxRow && c >= minCol && c <= maxCol;
         return overlaps(b.r, b.c);
@@ -516,6 +496,7 @@
       requestAnimationFrame(clientLoop);
     }
 
+    // 🎨 캠프08 바닥 및 중앙 통나무 다리
     function drawBackground() {
       const theme = mapSelect.value;
       for (let r = 0; r < ROWS; r++) {
@@ -524,17 +505,34 @@
           const y = r * TILE_SIZE;
 
           if (theme === 'camp') {
-            ctx.fillStyle = (r + c) % 2 === 0 ? '#52b788' : '#40916c';
+            ctx.fillStyle = (r + c) % 2 === 0 ? '#86efac' : '#4ade80';
+            ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+
+            if (c === 7) {
+              ctx.fillStyle = '#b45309';
+              ctx.fillRect(x + 2, y, TILE_SIZE - 4, TILE_SIZE);
+              
+              ctx.fillStyle = '#78350f';
+              ctx.fillRect(x + 4, y + 2, TILE_SIZE - 8, TILE_SIZE - 4);
+              ctx.fillStyle = '#d97706';
+              ctx.fillRect(x + 6, y + 6, TILE_SIZE - 12, TILE_SIZE - 12);
+              
+              ctx.fillStyle = '#fef08a';
+              ctx.fillRect(x, y, 3, TILE_SIZE);
+              ctx.fillRect(x + TILE_SIZE - 3, y, 3, TILE_SIZE);
+            }
           } else if (theme === 'patrit') {
-            ctx.fillStyle = (r + c) % 2 === 0 ? '#f4a261' : '#e76f51';
+            ctx.fillStyle = (r + c) % 2 === 0 ? '#fdba74' : '#fb923c';
+            ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
           } else {
-            ctx.fillStyle = (r + c) % 2 === 0 ? '#475569' : '#334155';
+            ctx.fillStyle = (r + c) % 2 === 0 ? '#64748b' : '#475569';
+            ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
           }
-          ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
         }
       }
     }
 
+    // 🎨 파괴 불가 (캠프 텐트)
     function drawSolidBlock(c, r) {
       const x = c * TILE_SIZE;
       const y = r * TILE_SIZE;
@@ -542,16 +540,23 @@
 
       if (theme === 'camp') {
         ctx.fillStyle = '#dc2626';
-        ctx.fillRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4);
-        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(x + 2, y + 4, TILE_SIZE - 4, TILE_SIZE - 6);
+        
+        ctx.fillStyle = '#f87171';
         ctx.beginPath();
         ctx.moveTo(x + TILE_SIZE / 2, y + 2);
-        ctx.lineTo(x + 2, y + TILE_SIZE - 2);
-        ctx.lineTo(x + TILE_SIZE - 2, y + TILE_SIZE - 2);
+        ctx.lineTo(x + 3, y + TILE_SIZE - 2);
+        ctx.lineTo(x + TILE_SIZE - 3, y + TILE_SIZE - 2);
         ctx.closePath();
         ctx.fill();
-        ctx.fillStyle = '#fef08a';
-        ctx.fillRect(x + TILE_SIZE / 2 - 3, y + TILE_SIZE / 2, 6, TILE_SIZE / 2 - 2);
+
+        ctx.fillStyle = '#450a0a';
+        ctx.beginPath();
+        ctx.moveTo(x + TILE_SIZE / 2, y + 10);
+        ctx.lineTo(x + 10, y + TILE_SIZE - 2);
+        ctx.lineTo(x + TILE_SIZE - 10, y + TILE_SIZE - 2);
+        ctx.closePath();
+        ctx.fill();
       } else if (theme === 'patrit') {
         ctx.fillStyle = '#78350f';
         ctx.beginPath();
@@ -570,31 +575,35 @@
       }
     }
 
+    // 🎨 파괴 가능 (캠프 풀숲 상자)
     function drawSoftBlock(c, r) {
       const x = c * TILE_SIZE;
       const y = r * TILE_SIZE;
       const theme = mapSelect.value;
 
       if (theme === 'camp') {
-        ctx.fillStyle = '#ca8a04';
+        ctx.fillStyle = '#a16207';
+        ctx.fillRect(x + 3, y + 3, TILE_SIZE - 6, TILE_SIZE - 6);
+        
+        ctx.fillStyle = '#15803d';
         ctx.beginPath();
-        ctx.roundRect(x + 3, y + 3, TILE_SIZE - 6, TILE_SIZE - 6, 6);
+        ctx.arc(x + TILE_SIZE / 2, y + TILE_SIZE / 2, TILE_SIZE / 2.6, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = '#854d0e';
-        ctx.lineWidth = 2;
-        ctx.stroke();
+
+        ctx.fillStyle = '#22c55e';
+        ctx.beginPath();
+        ctx.arc(x + TILE_SIZE / 2 - 3, y + TILE_SIZE / 2 - 3, TILE_SIZE / 4, 0, Math.PI * 2);
+        ctx.fill();
       } else {
         ctx.fillStyle = '#d97706';
         ctx.fillRect(x + 3, y + 3, TILE_SIZE - 6, TILE_SIZE - 6);
         ctx.strokeStyle = '#78350f';
         ctx.lineWidth = 2.5;
         ctx.strokeRect(x + 3, y + 3, TILE_SIZE - 6, TILE_SIZE - 6);
-        ctx.beginPath();
-        ctx.moveTo(x + 3, y + 3); ctx.lineTo(x + TILE_SIZE - 3, y + TILE_SIZE - 3);
-        ctx.stroke();
       }
     }
 
+    // 🎨 통통 튀는 물풍선
     function drawBomb(c, r) {
       const x = c * TILE_SIZE + TILE_SIZE / 2;
       const y = r * TILE_SIZE + TILE_SIZE / 2;
@@ -626,6 +635,7 @@
       ctx.fill();
     }
 
+    // 🎨 아이템 카드
     function drawItem(c, r, bgColor, symbol) {
       const x = c * TILE_SIZE;
       const y = r * TILE_SIZE;
@@ -645,10 +655,11 @@
       ctx.fillText(symbol, x + TILE_SIZE / 2, y + TILE_SIZE / 2 + floatY);
     }
 
+    // 🎨 캐릭터 스킨
     function drawPlayer(p, pos) {
       const x = pos.x + TILE_SIZE / 2;
       const y = pos.y + TILE_SIZE / 2;
-      const radius = TILE_SIZE / 2.4;
+      const radius = TILE_SIZE / 2.3;
 
       ctx.fillStyle = 'rgba(0,0,0,0.3)';
       ctx.beginPath();
@@ -657,7 +668,7 @@
 
       ctx.fillStyle = p.color;
       ctx.beginPath();
-      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.arc(x, y - 2, radius, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 2;
@@ -665,19 +676,19 @@
 
       ctx.fillStyle = '#ffe0bd';
       ctx.beginPath();
-      ctx.arc(x, y + 2, radius * 0.65, 0, Math.PI * 2);
+      ctx.arc(x, y + 1, radius * 0.65, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = '#000000';
       ctx.beginPath();
-      ctx.arc(x - 5, y, 2.5, 0, Math.PI * 2);
-      ctx.arc(x + 5, y, 2.5, 0, Math.PI * 2);
+      ctx.arc(x - 5, y - 1, 2.5, 0, Math.PI * 2);
+      ctx.arc(x + 5, y - 1, 2.5, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = '#f43f5e';
       ctx.beginPath();
-      ctx.arc(x - 8, y + 4, 2.5, 0, Math.PI * 2);
-      ctx.arc(x + 8, y + 4, 2.5, 0, Math.PI * 2);
+      ctx.arc(x - 8, y + 3, 2.5, 0, Math.PI * 2);
+      ctx.arc(x + 8, y + 3, 2.5, 0, Math.PI * 2);
       ctx.fill();
     }
 
