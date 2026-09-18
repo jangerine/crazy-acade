@@ -20,7 +20,6 @@
       overflow: hidden;
     }
 
-    /* 로비 & 컨트롤러 헤더 */
     #header-container {
       display: flex;
       flex-direction: column;
@@ -79,7 +78,6 @@
       text-shadow: 1px 1px 2px #000;
     }
 
-    /* 🎮 메인 아케이드 프레임 */
     #arcade-frame {
       display: flex;
       flex-direction: column;
@@ -92,7 +90,6 @@
       gap: 10px;
     }
 
-    /* 내 캐릭터 스탯 상단 바 */
     #my-status-bar {
       width: 100%;
       display: flex;
@@ -128,7 +125,6 @@
       gap: 4px;
     }
 
-    /* 메인 캔버스 뷰컨테이너 */
     #canvas-container {
       position: relative;
       border: 4px solid #0f172a;
@@ -141,7 +137,6 @@
       background-color: #000;
     }
 
-    /* 결과 승리/패배 모달 */
     #overlay {
       position: absolute;
       top: 0; left: 0; width: 100%; height: 100%;
@@ -191,7 +186,6 @@
   </div>
 
   <div id="arcade-frame">
-    <!-- 👤 내 정보 스탯 바 -->
     <div id="my-status-bar">
       <div class="player-tag" id="my-tag">
         <span id="my-avatar">🔴</span> <span id="my-label">PLAYER 1</span>
@@ -203,7 +197,6 @@
       </div>
     </div>
 
-    <!-- 🎮 게임 캔버스 (크아 15x15 규격) -->
     <div id="canvas-container">
       <canvas id="gameCanvas" width="540" height="540"></canvas>
 
@@ -353,7 +346,6 @@
       updateMyHUD();
     }
 
-    // 내 스탯 전용 상단 바 업데이트
     function updateMyHUD() {
       const me = gameState.players[myId];
       if (!me) return;
@@ -365,7 +357,7 @@
       document.getElementById('my-speed').innerText = me.speed || 1;
     }
 
-    // 💣 스페이스바 설치
+    // 💣 내 현재 정확한 위치에 물풍선 생성
     window.addEventListener('keydown', (e) => {
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
         e.preventDefault();
@@ -377,10 +369,13 @@
         if (!me || !me.isAlive) return;
 
         const myPos = localPositions[myId];
-        const centerCol = Math.min(COLS - 1, Math.max(0, Math.floor((myPos.x + TILE_SIZE / 2) / TILE_SIZE)));
-        const centerRow = Math.min(ROWS - 1, Math.max(0, Math.floor((myPos.y + TILE_SIZE / 2) / TILE_SIZE)));
+        const centerX = myPos.x + TILE_SIZE / 2;
+        const centerY = myPos.y + TILE_SIZE / 2;
 
-        socket.emit('placeBomb');
+        const centerCol = Math.min(COLS - 1, Math.max(0, Math.floor(centerX / TILE_SIZE)));
+        const centerRow = Math.min(ROWS - 1, Math.max(0, Math.floor(centerY / TILE_SIZE)));
+
+        socket.emit('placeBomb', { col: centerCol, row: centerRow });
 
         if (!myActiveBombs.some(b => b.r === centerRow && b.c === centerCol)) {
           myActiveBombs.push({ r: centerRow, c: centerCol });
@@ -496,7 +491,6 @@
       requestAnimationFrame(clientLoop);
     }
 
-    // 🎨 캠프08 바닥 및 중앙 통나무 다리
     function drawBackground() {
       const theme = mapSelect.value;
       for (let r = 0; r < ROWS; r++) {
@@ -532,7 +526,6 @@
       }
     }
 
-    // 🎨 파괴 불가 (캠프 텐트)
     function drawSolidBlock(c, r) {
       const x = c * TILE_SIZE;
       const y = r * TILE_SIZE;
@@ -575,7 +568,6 @@
       }
     }
 
-    // 🎨 파괴 가능 (캠프 풀숲 상자)
     function drawSoftBlock(c, r) {
       const x = c * TILE_SIZE;
       const y = r * TILE_SIZE;
@@ -603,7 +595,6 @@
       }
     }
 
-    // 🎨 통통 튀는 물풍선
     function drawBomb(c, r) {
       const x = c * TILE_SIZE + TILE_SIZE / 2;
       const y = r * TILE_SIZE + TILE_SIZE / 2;
@@ -635,7 +626,6 @@
       ctx.fill();
     }
 
-    // 🎨 아이템 카드
     function drawItem(c, r, bgColor, symbol) {
       const x = c * TILE_SIZE;
       const y = r * TILE_SIZE;
@@ -655,7 +645,6 @@
       ctx.fillText(symbol, x + TILE_SIZE / 2, y + TILE_SIZE / 2 + floatY);
     }
 
-    // 🎨 캐릭터 스킨
     function drawPlayer(p, pos) {
       const x = pos.x + TILE_SIZE / 2;
       const y = pos.y + TILE_SIZE / 2;
