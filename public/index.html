@@ -158,9 +158,7 @@
     let isGameStarted = false;
     let gameState = { map: [], players: {}, explosions: [] };
 
-    // 부드러운 위치 렌더링을 위한 픽셀 단위 실시간 위치 데이터
     let localPositions = {};
-
     const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
 
     socket.on('init', (data) => {
@@ -214,12 +212,9 @@
           gameState.players[id].speed = state.players[id].speed || 1;
           gameState.players[id].isAlive = state.players[id].isAlive;
 
-          // 나 이외의 플레이어는 서버 위치로 부드럽게 보간(Lerp)
           if (id !== myId && localPositions[id]) {
-            const targetX = state.players[id].x * TILE_SIZE;
-            const targetY = state.players[id].y * TILE_SIZE;
-            localPositions[id].targetX = targetX;
-            localPositions[id].targetY = targetY;
+            localPositions[id].targetX = state.players[id].x * TILE_SIZE;
+            localPositions[id].targetY = state.players[id].y * TILE_SIZE;
           }
         }
       });
@@ -287,7 +282,7 @@
 
     let lastServerSyncTime = 0;
 
-    // ✨ 60FPS 프레임 기반 픽셀 단위 연속 이동 로직
+    // 🏃‍♂️ 부드러운 이동 & 충돌 처리 함수
     function updateMovement() {
       if (!isGameStarted) return;
       const me = gameState.players[myId];
@@ -295,9 +290,7 @@
 
       const myPos = localPositions[myId];
       const speedLevel = me.speed || 1;
-      
-      // 스피드 아이템 수치에 따른 이동 속도 (픽셀/프레임)
-      const moveSpeed = 2.2 + (speedLevel - 1) * 0.6; 
+      const moveSpeed = 2.0 + (speedLevel - 1) * 0.5;
 
       let dx = 0;
       let dy = 0;
@@ -311,26 +304,21 @@
         let nextX = myPos.x + dx;
         let nextY = myPos.y + dy;
 
-        // 충돌 판정 (캐릭터 중심점 기준)
-        const size = TILE_SIZE * 0.7;
-        const padding = (TILE_SIZE - size) / 2;
+        const hitSize = TILE_SIZE * 0.6;
+        const margin = (TILE_SIZE - hitSize) / 2;
 
-        if (canMoveTo(nextX + padding, myPos.y + padding, size) && 
-            canMoveTo(nextX + padding, myPos.y + TILE_SIZE - padding - 1, size)) {
+        if (canMoveTo(nextX + margin, myPos.y + margin, hitSize)) {
           myPos.x = nextX;
         }
-
-        if (canMoveTo(myPos.x + padding, nextY + padding, size) && 
-            canMoveTo(myPos.x + TILE_SIZE - padding - 1, nextY + padding, size)) {
+        if (canMoveTo(myPos.x + margin, nextY + margin, hitSize)) {
           myPos.y = nextY;
         }
 
-        // 실시간 위치 타일 계산 후 서버에 주기적 보정 동기화 (100ms 마다)
+        myPos.x = Math.max(0, Math.min(canvas.width - TILE_SIZE, myPos.x));
+        myPos.y = Math.max(0, Math.min(canvas.height - TILE_SIZE, myPos.y));
+
         const now = Date.now();
-        if (now - lastServerSyncTime > 100) {
-          const gridX = Math.round(myPos.x / TILE_SIZE);
-          const gridY = Math.round(myPos.y / TILE_SIZE);
-          
+        if (now - lastServerSyncTime > 80) {
           let dir = null;
           if (keys.ArrowUp) dir = 'up';
           else if (keys.ArrowDown) dir = 'down';
@@ -342,28 +330,27 @@
         }
       }
 
-      // 상대방 위치는 부드럽게 보간(Lerp) 적용
       Object.keys(localPositions).forEach(id => {
         if (id !== myId) {
           const pos = localPositions[id];
           if (pos.targetX !== undefined) {
-            pos.x += (pos.targetX - pos.x) * 0.3;
-            pos.y += (pos.targetY - pos.y) * 0.3;
+            pos.x += (pos.targetX - pos.x) * 0.35;
+            pos.y += (pos.targetY - pos.y) * 0.35;
           }
         }
       });
     }
 
-    // 장애물 및 블록 충돌 검사
     function canMoveTo(x, y, size) {
       const minCol = Math.floor(x / TILE_SIZE);
-      const maxCol = Math.floor((x + size) / TILE_SIZE);
+      const maxCol = Math.floor((x + size - 1) / TILE_SIZE);
       const minRow = Math.floor(y / TILE_SIZE);
-      const maxRow = Math.floor((y + size) / TILE_SIZE);
+      const maxRow = Math.floor((y + size - 1) / TILE_SIZE);
 
       for (let r = minRow; r <= maxRow; r++) {
         for (let c = minCol; c <= maxCol; c++) {
           if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return false;
+          
           const tile = gameState.map[r] ? gameState.map[r][c] : TILE.SOLID_BLOCK;
           if (tile === TILE.SOLID_BLOCK || tile === TILE.SOFT_BLOCK || tile === TILE.BOMB) {
             return false;
@@ -417,7 +404,6 @@
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // 맵 및 아이템 그리기
       if (gameState.map && gameState.map.length > 0) {
         for (let r = 0; r < ROWS; r++) {
           for (let c = 0; c < COLS; c++) {
@@ -455,7 +441,6 @@
         }
       }
 
-      // 폭발 효과
       if (gameState.explosions) {
         ctx.fillStyle = '#f87171';
         gameState.explosions.forEach(exp => {
@@ -463,7 +448,6 @@
         });
       }
 
-      // 🏃‍♂️ 캐릭터 픽셀 단위 부드러운 위치 렌더링
       if (gameState.players) {
         Object.values(gameState.players).forEach(p => {
           if (!p.isAlive) return;
