@@ -161,6 +161,9 @@
     let localPositions = {};
     const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
 
+    // 내가 설치해서 아직 탈출하지 않은 물풍선의 좌표 목록 [{r, c}]
+    let myActiveBombs = [];
+
     socket.on('init', (data) => {
       myId = data.id;
       gameState.map = data.map;
@@ -195,6 +198,7 @@
       overlay.style.display = 'none';
       gameState.map = data.map;
       gameState.players = data.players;
+      myActiveBombs = [];
       syncLocalPositions();
       updateLobbyUI();
     });
@@ -202,6 +206,9 @@
     socket.on('gameState', (state) => {
       gameState.map = state.map;
       gameState.explosions = state.explosions;
+
+      // 이미 터진 물풍선은 내 통과 가능 목록에서 제거
+      myActiveBombs = myActiveBombs.filter(b => gameState.map[b.r] && gameState.map[b.r][b.c] === TILE.BOMB);
 
       Object.keys(state.players).forEach(id => {
         if (gameState.players[id]) {
@@ -231,6 +238,7 @@
       overlay.style.display = 'none';
       gameState.map = data.map;
       gameState.players = data.players;
+      myActiveBombs = [];
       syncLocalPositions();
       updateLobbyUI();
     });
@@ -274,7 +282,24 @@
 
     window.addEventListener('keydown', (e) => {
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
-      if (e.key === ' ') { socket.emit('placeBomb'); return; }
+      
+      // 스페이스바: 물풍선 설치 시 내 위치 등록
+      if (e.key === ' ') {
+        if (!isGameStarted || !localPositions[myId]) return;
+        const myPos = localPositions[myId];
+        const centerCol = Math.floor((myPos.x + TILE_SIZE / 2) / TILE_SIZE);
+        const centerRow = Math.floor((myPos.y + TILE_SIZE / 2) / TILE_SIZE);
+
+        // 현재 자리에 물풍선이 없을 때만 통과 가능 등록 및 서버 요청
+        if (gameState.map[centerRow] && gameState.map[centerRow][centerCol] !== TILE.BOMB) {
+          if (!myActiveBombs.some(b => b.r === centerRow && b.c === centerCol)) {
+            myActiveBombs.push({ r: centerRow, c: centerCol });
+          }
+          socket.emit('placeBomb');
+        }
+        return;
+      }
+
       if (e.key in keys) keys[e.key] = true;
     });
 
@@ -282,7 +307,7 @@
 
     let lastServerSyncTime = 0;
 
-    // 🏃‍♂️ 부드러운 이동 & 충돌 처리 함수
+    // 🏃‍♂️ 이동 및 충돌 체크
     function updateMovement() {
       if (!isGameStarted) return;
       const me = gameState.players[myId];
@@ -300,12 +325,14 @@
       if (keys.ArrowLeft) dx -= moveSpeed;
       if (keys.ArrowRight) dx += moveSpeed;
 
+      // 내가 설치한 물풍선에서 완전히 빠져나갔는지 체크하여 해제
+      const hitSize = TILE_SIZE * 0.6;
+      const margin = (TILE_SIZE - hitSize) / 2;
+      checkBombOverlap(myPos.x + margin, myPos.y + margin, hitSize);
+
       if (dx !== 0 || dy !== 0) {
         let nextX = myPos.x + dx;
         let nextY = myPos.y + dy;
-
-        const hitSize = TILE_SIZE * 0.6;
-        const margin = (TILE_SIZE - hitSize) / 2;
 
         if (canMoveTo(nextX + margin, myPos.y + margin, hitSize)) {
           myPos.x = nextX;
@@ -341,6 +368,20 @@
       });
     }
 
+    // 플레이어가 특정 물풍선 영역을 완전히 이탈했는지 감지
+    function checkBombOverlap(x, y, size) {
+      const minCol = Math.floor(x / TILE_SIZE);
+      const maxCol = Math.floor((x + size - 1) / TILE_SIZE);
+      const minRow = Math.floor(y / TILE_SIZE);
+      const maxRow = Math.floor((y + size - 1) / TILE_SIZE);
+
+      myActiveBombs = myActiveBombs.filter(b => {
+        const overlaps = (r, c) => r >= minRow && r <= maxRow && c >= minCol && c <= maxCol;
+        return overlaps(b.r, b.c);
+      });
+    }
+
+    // 장애물 및 물풍선 통과 여부 검사
     function canMoveTo(x, y, size) {
       const minCol = Math.floor(x / TILE_SIZE);
       const maxCol = Math.floor((x + size - 1) / TILE_SIZE);
@@ -350,10 +391,19 @@
       for (let r = minRow; r <= maxRow; r++) {
         for (let c = minCol; c <= maxCol; c++) {
           if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return false;
-          
+
           const tile = gameState.map[r] ? gameState.map[r][c] : TILE.SOLID_BLOCK;
-          if (tile === TILE.SOLID_BLOCK || tile === TILE.SOFT_BLOCK || tile === TILE.BOMB) {
+
+          if (tile === TILE.SOLID_BLOCK || tile === TILE.SOFT_BLOCK) {
             return false;
+          }
+
+          // 물풍선 충돌 체크 (단, 아직 벗어나지 않은 '내 물풍선'은 통과 허용)
+          if (tile === TILE.BOMB) {
+            const isInsideMyBomb = myActiveBombs.some(b => b.r === r && b.c === c);
+            if (!isInsideMyBomb) {
+              return false;
+            }
           }
         }
       }
