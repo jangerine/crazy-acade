@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Crazy Arcade - Map Select</title>
+  <title>Crazy Arcade - Enhanced UI & Items</title>
   <style>
     body {
-      background-color: #1b4332;
+      background-color: #121820;
       color: #fff;
-      font-family: Arial, sans-serif;
+      font-family: 'Malgun Gothic', sans-serif;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -16,49 +16,95 @@
       min-height: 100vh;
       margin: 0;
     }
+    h1 {
+      margin: 10px 0;
+      color: #4cc9f0;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
+    }
+    /* 🚪 대기실 & 컨트롤 패널 */
     #lobby-controls {
       display: flex;
-      gap: 10px;
-      margin-bottom: 15px;
+      gap: 15px;
+      margin-bottom: 12px;
       align-items: center;
-      background: #2d6a4f;
-      padding: 10px 20px;
-      border-radius: 8px;
+      background: #1f2937;
+      padding: 12px 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+      border: 1px solid #374151;
     }
     select, button {
       padding: 8px 16px;
       font-size: 15px;
       font-weight: bold;
-      border-radius: 4px;
+      border-radius: 6px;
       border: none;
       cursor: pointer;
+      transition: all 0.2s;
     }
-    #start-btn { background-color: #ffb703; color: #000; }
-    #start-btn:disabled { background-color: #6c757d; cursor: not-allowed; }
-    #status { margin-bottom: 10px; font-size: 15px; color: #ffb703; }
+    select { background: #374151; color: white; }
+    #start-btn { background-color: #4338ca; color: #fff; }
+    #start-btn:hover { background-color: #4f46e5; }
+    #start-btn:disabled { background-color: #4b5563; cursor: not-allowed; opacity: 0.6; }
+
+    #status {
+      margin-bottom: 12px;
+      font-size: 15px;
+      color: #f59e0b;
+      font-weight: bold;
+    }
+
     #game-container { position: relative; }
-    canvas {
-      border: 4px solid #2d6a4f;
-      background-color: #55a630;
-      display: block;
+
+    /* 🎮 내 스탯 실시간 HUD 대시보드 */
+    #hud {
+      display: flex;
+      justify-content: space-around;
+      width: 600px;
+      background: #111827;
+      border: 3px solid #1f2937;
+      border-bottom: none;
+      border-radius: 8px 8px 0 0;
+      padding: 8px 0;
+      box-sizing: border-box;
     }
+    .hud-card {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: bold;
+      background: #1f2937;
+      padding: 4px 12px;
+      border-radius: 6px;
+    }
+
+    canvas {
+      border: 4px solid #1f2937;
+      background-color: #4b7bec; /* 기본 배경 */
+      display: block;
+      border-radius: 0 0 8px 8px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.7);
+    }
+
     #overlay {
       position: absolute;
       top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.75);
+      background: rgba(0, 0, 0, 0.85);
       display: none;
       flex-direction: column;
       align-items: center;
       justify-content: center;
+      border-radius: 8px;
     }
-    #winner-text { font-size: 28px; color: #ffb703; margin-bottom: 20px; font-weight: bold; }
+    #winner-text { font-size: 32px; color: #f59e0b; margin-bottom: 20px; font-weight: bold; }
+    .lobby-btn { background: #10b981; color: white; padding: 10px 20px; font-size: 16px; }
   </style>
 </head>
 <body>
 
-  <h1>Web Crazy Arcade 💣</h1>
-  
-  <!-- 🚪 대기실 UI (맵 선택 & 게임 시작) -->
+  <h1>Crazy Arcade Online 💣</h1>
+
   <div id="lobby-controls">
     <label for="mapSelect">⛺ 맵 선택:</label>
     <select id="mapSelect" onchange="onMapChange()">
@@ -72,10 +118,18 @@
   <div id="status">서버 연결 중...</div>
 
   <div id="game-container">
+    <!-- 📊 실시간 HUD (내 아이템/스탯 현황) -->
+    <div id="hud">
+      <div class="hud-card">🎈 물풍선: <span id="hud-bombs" style="color:#60a5fa">1</span></div>
+      <div class="hud-card">🔥 물줄기: <span id="hud-range" style="color:#f87171">1</span></div>
+      <div class="hud-card">🛼 스피드: <span id="hud-speed" style="color:#34d399">1</span></div>
+    </div>
+
     <canvas id="gameCanvas" width="600" height="600"></canvas>
+
     <div id="overlay">
       <div id="winner-text">Player 1 승리!</div>
-      <button onclick="requestLobby()">대기실로 이동</button>
+      <button class="lobby-btn" onclick="requestLobby()">대기실로 이동</button>
     </div>
   </div>
 
@@ -93,7 +147,16 @@
     const COLS = 15;
     const TILE_SIZE = canvas.width / COLS;
 
-    const TILE = { EMPTY: 0, SOLID_BLOCK: 1, SOFT_BLOCK: 2, BOMB: 3, ITEM_BOMB: 4, ITEM_RANGE: 5 };
+    // 아이템 및 타일 타입 정의
+    const TILE = {
+      EMPTY: 0,
+      SOLID_BLOCK: 1,
+      SOFT_BLOCK: 2,
+      BOMB: 3,
+      ITEM_BOMB: 4,  // 물풍선 +1 (파란색 박스)
+      ITEM_RANGE: 5, // 물줄기 +1 (빨간색 박스)
+      ITEM_SPEED: 6  // 스피드/로울러 +1 (초록색 박스)
+    };
 
     let myId = null;
     let isGameStarted = false;
@@ -107,26 +170,13 @@
       gameState.players = data.players;
       isGameStarted = data.isGameStarted;
       mapSelect.value = data.selectedMap;
-      
       updateLobbyUI();
       requestAnimationFrame(clientLoop);
     });
 
-    socket.on('playerJoined', (player) => {
-      gameState.players[player.id] = player;
-      updateLobbyUI();
-    });
-
-    socket.on('playerLeft', (id) => {
-      delete gameState.players[id];
-      updateLobbyUI();
-    });
-
-    socket.on('mapChanged', (data) => {
-      mapSelect.value = data.selectedMap;
-      gameState.map = data.map;
-    });
-
+    socket.on('playerJoined', (player) => { gameState.players[player.id] = player; updateLobbyUI(); });
+    socket.on('playerLeft', (id) => { delete gameState.players[id]; updateLobbyUI(); });
+    socket.on('mapChanged', (data) => { mapSelect.value = data.selectedMap; gameState.map = data.map; });
     socket.on('gameStarted', (data) => {
       isGameStarted = true;
       overlay.style.display = 'none';
@@ -138,14 +188,17 @@
     socket.on('gameState', (state) => {
       gameState.map = state.map;
       gameState.explosions = state.explosions;
-
       Object.keys(state.players).forEach(id => {
         if (gameState.players[id]) {
           gameState.players[id].x = state.players[id].x;
           gameState.players[id].y = state.players[id].y;
+          gameState.players[id].maxBombs = state.players[id].maxBombs;
+          gameState.players[id].bombRange = state.players[id].bombRange;
+          gameState.players[id].speed = state.players[id].speed || 1;
           gameState.players[id].isAlive = state.players[id].isAlive;
         }
       });
+      updateHUD();
     });
 
     socket.on('gameOver', (data) => {
@@ -161,50 +214,50 @@
       updateLobbyUI();
     });
 
-    function onMapChange() {
-      socket.emit('selectMap', mapSelect.value);
-    }
-
-    function startGame() {
-      socket.emit('startGame');
-    }
-
-    function requestLobby() {
-      socket.emit('restartGame');
-    }
+    function onMapChange() { socket.emit('selectMap', mapSelect.value); }
+    function startGame() { socket.emit('startGame'); }
+    function requestLobby() { socket.emit('restartGame'); }
 
     function updateLobbyUI() {
       const me = gameState.players[myId];
       const isHost = me && me.pNum === 1;
-
       mapSelect.disabled = isGameStarted || !isHost;
       startBtn.disabled = isGameStarted || !isHost;
 
       if (!isGameStarted) {
-        statusDiv.innerText = isHost 
-          ? `[방장] 맵을 선택하고 [게임 시작] 버튼을 누르세요.` 
-          : `[참가자] 방장이 게임을 시작하기를 기다리는 중...`;
+        statusDiv.innerText = isHost ? `[방장] 맵을 선택하고 [게임 시작]을 누르세요.` : `[참가자] 방장의 게임 시작을 기다리는 중...`;
       } else {
-        statusDiv.innerText = `게임 진행 중... (당신: Player ${me ? me.pNum : ''})`;
+        statusDiv.innerText = `게임 진행 중 (Player ${me ? me.pNum : ''})`;
       }
     }
 
-    // 이동 키 세팅
+    function updateHUD() {
+      const me = gameState.players[myId];
+      if (me) {
+        document.getElementById('hud-bombs').innerText = me.maxBombs;
+        document.getElementById('hud-range').innerText = me.bombRange;
+        document.getElementById('hud-speed').innerText = me.speed || 1;
+      }
+    }
+
     window.addEventListener('keydown', (e) => {
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
       if (e.key === ' ') { socket.emit('placeBomb'); return; }
       if (e.key in keys) keys[e.key] = true;
     });
 
-    window.addEventListener('keyup', (e) => {
-      if (e.key in keys) keys[e.key] = false;
-    });
+    window.addEventListener('keyup', (e) => { if (e.key in keys) keys[e.key] = false; });
 
     let lastMoveTime = 0;
     function handleInput() {
       if (!isGameStarted) return;
+      const me = gameState.players[myId];
+      if (!me) return;
+
+      // 스피드 스탯 반영: 기본 130ms -> 스피드 레벨당 이동 쿨타임 감소
+      const moveInterval = Math.max(60, 130 - ((me.speed || 1) - 1) * 15);
       const now = Date.now();
-      if (now - lastMoveTime < 120) return;
+      if (now - lastMoveTime < moveInterval) return;
 
       let dir = null;
       if (keys.ArrowUp) dir = 'up';
@@ -224,6 +277,49 @@
       requestAnimationFrame(clientLoop);
     }
 
+    // 🎨 [아이템 및 그래픽 커스텀 렌더링 함수]
+    function drawItem(c, r, bgColor, iconType) {
+      const x = c * TILE_SIZE;
+      const y = r * TILE_SIZE;
+      const pad = 6;
+      const size = TILE_SIZE - pad * 2;
+
+      // 1. 아이템 박스 입체 테두리 및 배경
+      ctx.fillStyle = bgColor;
+      ctx.beginPath();
+      ctx.roundRect(x + pad, y + pad, size, size, 8);
+      ctx.fill();
+
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#ffffff';
+      ctx.stroke();
+
+      // 2. 아이템 내부 아이콘 그리기
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      if (iconType === 'BOMB') {
+        // 물풍선 아이콘 (파란 원 + 묶음)
+        ctx.fillStyle = '#3b82f6';
+        ctx.beginPath();
+        ctx.arc(x + TILE_SIZE / 2, y + TILE_SIZE / 2 + 2, 9, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(x + TILE_SIZE / 2 - 2, y + TILE_SIZE / 2 - 8, 4, 3);
+      } else if (iconType === 'RANGE') {
+        // 물줄기/불꽃 아이콘 (십자가/불꽃 모양)
+        ctx.fillStyle = '#ef4444';
+        ctx.font = 'bold 18px sans-serif';
+        ctx.fillText('🔥', x + TILE_SIZE / 2, y + TILE_SIZE / 2);
+      } else if (iconType === 'SPEED') {
+        // 롤러스케이트 아이콘
+        ctx.fillStyle = '#10b981';
+        ctx.font = 'bold 18px sans-serif';
+        ctx.fillText('🛼', x + TILE_SIZE / 2, y + TILE_SIZE / 2);
+      }
+    }
+
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -231,35 +327,56 @@
         for (let r = 0; r < ROWS; r++) {
           for (let c = 0; c < COLS; c++) {
             const type = gameState.map[r][c];
+
+            // 풀밭 타일 패턴
+            ctx.fillStyle = (r + c) % 2 === 0 ? '#4ab04a' : '#43a243';
+            ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+
             if (type === TILE.SOLID_BLOCK) {
-              ctx.fillStyle = '#2b2d42';
+              // 파괴 불가 블록
+              ctx.fillStyle = '#374151';
               ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+              ctx.strokeStyle = '#1f2937';
+              ctx.strokeRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
             } else if (type === TILE.SOFT_BLOCK) {
-              ctx.fillStyle = '#b08968';
+              // 파괴 가능 텐트/상자
+              ctx.fillStyle = '#d97706';
               ctx.fillRect(c * TILE_SIZE + 2, r * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+              ctx.strokeStyle = '#b45309';
+              ctx.strokeRect(c * TILE_SIZE + 2, r * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
             } else if (type === TILE.BOMB) {
-              ctx.fillStyle = '#0077b6';
+              // 물풍선
+              ctx.fillStyle = '#2563eb';
               ctx.beginPath();
-              ctx.arc(c * TILE_SIZE + TILE_SIZE / 2, r * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE / 2.5, 0, Math.PI * 2);
+              ctx.arc(c * TILE_SIZE + TILE_SIZE / 2, r * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE / 2.4, 0, Math.PI * 2);
               ctx.fill();
-            } else if (type === TILE.ITEM_BOMB || type === TILE.ITEM_RANGE) {
-              ctx.fillStyle = type === TILE.ITEM_BOMB ? '#ffb703' : '#fb8500';
-              ctx.fillRect(c * TILE_SIZE + 10, r * TILE_SIZE + 10, TILE_SIZE - 20, TILE_SIZE - 20);
+              ctx.strokeStyle = '#60a5fa';
+              ctx.lineWidth = 3;
+              ctx.stroke();
+            } else if (type === TILE.ITEM_BOMB) {
+              drawItem(c, r, '#2563eb', 'BOMB');
+            } else if (type === TILE.ITEM_RANGE) {
+              drawItem(c, r, '#dc2626', 'RANGE');
+            } else if (type === TILE.ITEM_SPEED) {
+              drawItem(c, r, '#059669', 'SPEED');
             }
           }
         }
       }
 
+      // 물풍선 폭발 효과
       if (gameState.explosions) {
-        ctx.fillStyle = '#e63946';
+        ctx.fillStyle = '#f87171';
         gameState.explosions.forEach(exp => {
           ctx.fillRect(exp.x * TILE_SIZE, exp.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
         });
       }
 
+      // 플레이어 렌더링
       if (gameState.players) {
         Object.values(gameState.players).forEach(p => {
           if (!p.isAlive) return;
+
           ctx.fillStyle = p.color;
           ctx.beginPath();
           ctx.arc(p.x * TILE_SIZE + TILE_SIZE / 2, p.y * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE / 3, 0, Math.PI * 2);
