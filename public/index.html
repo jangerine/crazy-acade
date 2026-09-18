@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Crazy Arcade - Enhanced UI & Items</title>
+  <title>Crazy Arcade Online 💣</title>
   <style>
     body {
       background-color: #121820;
@@ -21,7 +21,6 @@
       color: #4cc9f0;
       text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
     }
-    /* 🚪 대기실 & 컨트롤 패널 */
     #lobby-controls {
       display: flex;
       gap: 15px;
@@ -56,7 +55,6 @@
 
     #game-container { position: relative; }
 
-    /* 🎮 내 스탯 실시간 HUD 대시보드 */
     #hud {
       display: flex;
       justify-content: space-around;
@@ -81,7 +79,7 @@
 
     canvas {
       border: 4px solid #1f2937;
-      background-color: #4b7bec; /* 기본 배경 */
+      background-color: #4b7bec;
       display: block;
       border-radius: 0 0 8px 8px;
       box-shadow: 0 10px 25px rgba(0,0,0,0.7);
@@ -118,7 +116,6 @@
   <div id="status">서버 연결 중...</div>
 
   <div id="game-container">
-    <!-- 📊 실시간 HUD (내 아이템/스탯 현황) -->
     <div id="hud">
       <div class="hud-card">🎈 물풍선: <span id="hud-bombs" style="color:#60a5fa">1</span></div>
       <div class="hud-card">🔥 물줄기: <span id="hud-range" style="color:#f87171">1</span></div>
@@ -147,20 +144,22 @@
     const COLS = 15;
     const TILE_SIZE = canvas.width / COLS;
 
-    // 아이템 및 타일 타입 정의
     const TILE = {
       EMPTY: 0,
       SOLID_BLOCK: 1,
       SOFT_BLOCK: 2,
       BOMB: 3,
-      ITEM_BOMB: 4,  // 물풍선 +1 (파란색 박스)
-      ITEM_RANGE: 5, // 물줄기 +1 (빨간색 박스)
-      ITEM_SPEED: 6  // 스피드/로울러 +1 (초록색 박스)
+      ITEM_BOMB: 4,
+      ITEM_RANGE: 5,
+      ITEM_SPEED: 6
     };
 
     let myId = null;
     let isGameStarted = false;
     let gameState = { map: [], players: {}, explosions: [] };
+
+    // 부드러운 위치 렌더링을 위한 픽셀 단위 실시간 위치 데이터
+    let localPositions = {};
 
     const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
 
@@ -170,24 +169,42 @@
       gameState.players = data.players;
       isGameStarted = data.isGameStarted;
       mapSelect.value = data.selectedMap;
+
+      syncLocalPositions();
       updateLobbyUI();
       requestAnimationFrame(clientLoop);
     });
 
-    socket.on('playerJoined', (player) => { gameState.players[player.id] = player; updateLobbyUI(); });
-    socket.on('playerLeft', (id) => { delete gameState.players[id]; updateLobbyUI(); });
-    socket.on('mapChanged', (data) => { mapSelect.value = data.selectedMap; gameState.map = data.map; });
+    socket.on('playerJoined', (player) => {
+      gameState.players[player.id] = player;
+      localPositions[player.id] = { x: player.x * TILE_SIZE, y: player.y * TILE_SIZE };
+      updateLobbyUI();
+    });
+
+    socket.on('playerLeft', (id) => {
+      delete gameState.players[id];
+      delete localPositions[id];
+      updateLobbyUI();
+    });
+
+    socket.on('mapChanged', (data) => {
+      mapSelect.value = data.selectedMap;
+      gameState.map = data.map;
+    });
+
     socket.on('gameStarted', (data) => {
       isGameStarted = true;
       overlay.style.display = 'none';
       gameState.map = data.map;
       gameState.players = data.players;
+      syncLocalPositions();
       updateLobbyUI();
     });
 
     socket.on('gameState', (state) => {
       gameState.map = state.map;
       gameState.explosions = state.explosions;
+
       Object.keys(state.players).forEach(id => {
         if (gameState.players[id]) {
           gameState.players[id].x = state.players[id].x;
@@ -196,6 +213,14 @@
           gameState.players[id].bombRange = state.players[id].bombRange;
           gameState.players[id].speed = state.players[id].speed || 1;
           gameState.players[id].isAlive = state.players[id].isAlive;
+
+          // 나 이외의 플레이어는 서버 위치로 부드럽게 보간(Lerp)
+          if (id !== myId && localPositions[id]) {
+            const targetX = state.players[id].x * TILE_SIZE;
+            const targetY = state.players[id].y * TILE_SIZE;
+            localPositions[id].targetX = targetX;
+            localPositions[id].targetY = targetY;
+          }
         }
       });
       updateHUD();
@@ -211,8 +236,20 @@
       overlay.style.display = 'none';
       gameState.map = data.map;
       gameState.players = data.players;
+      syncLocalPositions();
       updateLobbyUI();
     });
+
+    function syncLocalPositions() {
+      Object.values(gameState.players).forEach(p => {
+        localPositions[p.id] = {
+          x: p.x * TILE_SIZE,
+          y: p.y * TILE_SIZE,
+          targetX: p.x * TILE_SIZE,
+          targetY: p.y * TILE_SIZE
+        };
+      });
+    }
 
     function onMapChange() { socket.emit('selectMap', mapSelect.value); }
     function startGame() { socket.emit('startGame'); }
@@ -248,43 +285,106 @@
 
     window.addEventListener('keyup', (e) => { if (e.key in keys) keys[e.key] = false; });
 
-    let lastMoveTime = 0;
-    function handleInput() {
+    let lastServerSyncTime = 0;
+
+    // ✨ 60FPS 프레임 기반 픽셀 단위 연속 이동 로직
+    function updateMovement() {
       if (!isGameStarted) return;
       const me = gameState.players[myId];
-      if (!me) return;
+      if (!me || !me.isAlive || !localPositions[myId]) return;
 
-      // 스피드 스탯 반영: 기본 130ms -> 스피드 레벨당 이동 쿨타임 감소
-      const moveInterval = Math.max(60, 130 - ((me.speed || 1) - 1) * 15);
-      const now = Date.now();
-      if (now - lastMoveTime < moveInterval) return;
+      const myPos = localPositions[myId];
+      const speedLevel = me.speed || 1;
+      
+      // 스피드 아이템 수치에 따른 이동 속도 (픽셀/프레임)
+      const moveSpeed = 2.2 + (speedLevel - 1) * 0.6; 
 
-      let dir = null;
-      if (keys.ArrowUp) dir = 'up';
-      else if (keys.ArrowDown) dir = 'down';
-      else if (keys.ArrowLeft) dir = 'left';
-      else if (keys.ArrowRight) dir = 'right';
+      let dx = 0;
+      let dy = 0;
 
-      if (dir) {
-        socket.emit('move', dir);
-        lastMoveTime = now;
+      if (keys.ArrowUp) dy -= moveSpeed;
+      if (keys.ArrowDown) dy += moveSpeed;
+      if (keys.ArrowLeft) dx -= moveSpeed;
+      if (keys.ArrowRight) dx += moveSpeed;
+
+      if (dx !== 0 || dy !== 0) {
+        let nextX = myPos.x + dx;
+        let nextY = myPos.y + dy;
+
+        // 충돌 판정 (캐릭터 중심점 기준)
+        const size = TILE_SIZE * 0.7;
+        const padding = (TILE_SIZE - size) / 2;
+
+        if (canMoveTo(nextX + padding, myPos.y + padding, size) && 
+            canMoveTo(nextX + padding, myPos.y + TILE_SIZE - padding - 1, size)) {
+          myPos.x = nextX;
+        }
+
+        if (canMoveTo(myPos.x + padding, nextY + padding, size) && 
+            canMoveTo(myPos.x + TILE_SIZE - padding - 1, nextY + padding, size)) {
+          myPos.y = nextY;
+        }
+
+        // 실시간 위치 타일 계산 후 서버에 주기적 보정 동기화 (100ms 마다)
+        const now = Date.now();
+        if (now - lastServerSyncTime > 100) {
+          const gridX = Math.round(myPos.x / TILE_SIZE);
+          const gridY = Math.round(myPos.y / TILE_SIZE);
+          
+          let dir = null;
+          if (keys.ArrowUp) dir = 'up';
+          else if (keys.ArrowDown) dir = 'down';
+          else if (keys.ArrowLeft) dir = 'left';
+          else if (keys.ArrowRight) dir = 'right';
+
+          if (dir) socket.emit('move', dir);
+          lastServerSyncTime = now;
+        }
       }
+
+      // 상대방 위치는 부드럽게 보간(Lerp) 적용
+      Object.keys(localPositions).forEach(id => {
+        if (id !== myId) {
+          const pos = localPositions[id];
+          if (pos.targetX !== undefined) {
+            pos.x += (pos.targetX - pos.x) * 0.3;
+            pos.y += (pos.targetY - pos.y) * 0.3;
+          }
+        }
+      });
+    }
+
+    // 장애물 및 블록 충돌 검사
+    function canMoveTo(x, y, size) {
+      const minCol = Math.floor(x / TILE_SIZE);
+      const maxCol = Math.floor((x + size) / TILE_SIZE);
+      const minRow = Math.floor(y / TILE_SIZE);
+      const maxRow = Math.floor((y + size) / TILE_SIZE);
+
+      for (let r = minRow; r <= maxRow; r++) {
+        for (let c = minCol; c <= maxCol; c++) {
+          if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return false;
+          const tile = gameState.map[r] ? gameState.map[r][c] : TILE.SOLID_BLOCK;
+          if (tile === TILE.SOLID_BLOCK || tile === TILE.SOFT_BLOCK || tile === TILE.BOMB) {
+            return false;
+          }
+        }
+      }
+      return true;
     }
 
     function clientLoop() {
-      handleInput();
+      updateMovement();
       draw();
       requestAnimationFrame(clientLoop);
     }
 
-    // 🎨 [아이템 및 그래픽 커스텀 렌더링 함수]
     function drawItem(c, r, bgColor, iconType) {
       const x = c * TILE_SIZE;
       const y = r * TILE_SIZE;
       const pad = 6;
       const size = TILE_SIZE - pad * 2;
 
-      // 1. 아이템 박스 입체 테두리 및 배경
       ctx.fillStyle = bgColor;
       ctx.beginPath();
       ctx.roundRect(x + pad, y + pad, size, size, 8);
@@ -294,13 +394,11 @@
       ctx.strokeStyle = '#ffffff';
       ctx.stroke();
 
-      // 2. 아이템 내부 아이콘 그리기
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
       if (iconType === 'BOMB') {
-        // 물풍선 아이콘 (파란 원 + 묶음)
         ctx.fillStyle = '#3b82f6';
         ctx.beginPath();
         ctx.arc(x + TILE_SIZE / 2, y + TILE_SIZE / 2 + 2, 9, 0, Math.PI * 2);
@@ -308,13 +406,9 @@
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(x + TILE_SIZE / 2 - 2, y + TILE_SIZE / 2 - 8, 4, 3);
       } else if (iconType === 'RANGE') {
-        // 물줄기/불꽃 아이콘 (십자가/불꽃 모양)
-        ctx.fillStyle = '#ef4444';
         ctx.font = 'bold 18px sans-serif';
         ctx.fillText('🔥', x + TILE_SIZE / 2, y + TILE_SIZE / 2);
       } else if (iconType === 'SPEED') {
-        // 롤러스케이트 아이콘
-        ctx.fillStyle = '#10b981';
         ctx.font = 'bold 18px sans-serif';
         ctx.fillText('🛼', x + TILE_SIZE / 2, y + TILE_SIZE / 2);
       }
@@ -323,29 +417,26 @@
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      // 맵 및 아이템 그리기
       if (gameState.map && gameState.map.length > 0) {
         for (let r = 0; r < ROWS; r++) {
           for (let c = 0; c < COLS; c++) {
             const type = gameState.map[r][c];
 
-            // 풀밭 타일 패턴
             ctx.fillStyle = (r + c) % 2 === 0 ? '#4ab04a' : '#43a243';
             ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
 
             if (type === TILE.SOLID_BLOCK) {
-              // 파괴 불가 블록
               ctx.fillStyle = '#374151';
               ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
               ctx.strokeStyle = '#1f2937';
               ctx.strokeRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
             } else if (type === TILE.SOFT_BLOCK) {
-              // 파괴 가능 텐트/상자
               ctx.fillStyle = '#d97706';
               ctx.fillRect(c * TILE_SIZE + 2, r * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
               ctx.strokeStyle = '#b45309';
               ctx.strokeRect(c * TILE_SIZE + 2, r * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
             } else if (type === TILE.BOMB) {
-              // 물풍선
               ctx.fillStyle = '#2563eb';
               ctx.beginPath();
               ctx.arc(c * TILE_SIZE + TILE_SIZE / 2, r * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE / 2.4, 0, Math.PI * 2);
@@ -364,7 +455,7 @@
         }
       }
 
-      // 물풍선 폭발 효과
+      // 폭발 효과
       if (gameState.explosions) {
         ctx.fillStyle = '#f87171';
         gameState.explosions.forEach(exp => {
@@ -372,20 +463,26 @@
         });
       }
 
-      // 플레이어 렌더링
+      // 🏃‍♂️ 캐릭터 픽셀 단위 부드러운 위치 렌더링
       if (gameState.players) {
         Object.values(gameState.players).forEach(p => {
           if (!p.isAlive) return;
 
+          const pos = localPositions[p.id] || { x: p.x * TILE_SIZE, y: p.y * TILE_SIZE };
+
           ctx.fillStyle = p.color;
           ctx.beginPath();
-          ctx.arc(p.x * TILE_SIZE + TILE_SIZE / 2, p.y * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE / 3, 0, Math.PI * 2);
+          ctx.arc(pos.x + TILE_SIZE / 2, pos.y + TILE_SIZE / 2, TILE_SIZE / 2.8, 0, Math.PI * 2);
           ctx.fill();
+
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.stroke();
 
           ctx.fillStyle = '#FFFFFF';
           ctx.font = 'bold 12px Arial';
           ctx.textAlign = 'center';
-          ctx.fillText(`P${p.pNum}`, p.x * TILE_SIZE + TILE_SIZE / 2, p.y * TILE_SIZE + TILE_SIZE / 2 + 4);
+          ctx.fillText(`P${p.pNum}`, pos.x + TILE_SIZE / 2, pos.y + TILE_SIZE / 2 + 4);
         });
       }
     }
