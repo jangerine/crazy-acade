@@ -11,16 +11,18 @@ app.use(express.static(__dirname + '/public'));
 const ROWS = 15;
 const COLS = 15;
 
+// 타일 및 아이템 타입 정의
 const TILE = {
   EMPTY: 0,
   SOLID_BLOCK: 1,
   SOFT_BLOCK: 2,
   BOMB: 3,
-  ITEM_BOMB: 4,
-  ITEM_RANGE: 5
+  ITEM_BOMB: 4,  // 물풍선 +1
+  ITEM_RANGE: 5, // 물줄기 +1
+  ITEM_SPEED: 6  // 스피드 +1
 };
 
-// ⛺ [프리셋 맵 모음]
+// ⛺ 프리셋 맵 데이터
 const MAP_PRESETS = {
   camp: [
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -81,7 +83,7 @@ let players = {};
 let bombs = [];
 let explosions = [];
 let isGameOver = false;
-let isGameStarted = false; // 대기실 / 게임 진행 상태 구분
+let isGameStarted = false;
 
 function loadSelectedMap(key) {
   if (MAP_PRESETS[key]) {
@@ -102,6 +104,7 @@ function resetGameRound() {
     p.y = isFirst ? 1 : ROWS - 2;
     p.maxBombs = 1;
     p.bombRange = 1;
+    p.speed = 1;
     p.activeBombs = 0;
     p.isAlive = true;
     p.lastMoveTime = 0;
@@ -129,12 +132,12 @@ io.on('connection', (socket) => {
     color: assignedNum === 1 ? '#2ECC71' : '#E74C3C',
     maxBombs: 1,
     bombRange: 1,
+    speed: 1,
     activeBombs: 0,
     isAlive: true,
     lastMoveTime: 0
   };
 
-  // 초기 상태 전송
   socket.emit('init', {
     id: socket.id,
     map,
@@ -142,18 +145,16 @@ io.on('connection', (socket) => {
     selectedMap: currentMapKey,
     isGameStarted
   });
-  
+
   socket.broadcast.emit('playerJoined', players[socket.id]);
 
-  // 방장이 맵을 선택할 때
   socket.on('selectMap', (mapKey) => {
-    if (!isGameStarted && players[socket.id]?.pNum === 1) { // P1(방장)만 변경 가능
+    if (!isGameStarted && players[socket.id]?.pNum === 1) {
       loadSelectedMap(mapKey);
       io.emit('mapChanged', { selectedMap: currentMapKey, map });
     }
   });
 
-  // 게임 시작 요청 (방장)
   socket.on('startGame', () => {
     if (!isGameStarted && players[socket.id]?.pNum === 1) {
       isGameStarted = true;
@@ -166,10 +167,6 @@ io.on('connection', (socket) => {
     if (!isGameStarted || isGameOver) return;
     const p = players[socket.id];
     if (!p || !p.isAlive) return;
-
-    const now = Date.now();
-    if (now - p.lastMoveTime < 100) return;
-    p.lastMoveTime = now;
 
     let nx = p.x;
     let ny = p.y;
@@ -184,11 +181,15 @@ io.on('connection', (socket) => {
         p.x = nx;
         p.y = ny;
 
+        // 아이템 획득 처리
         if (target === TILE.ITEM_BOMB) {
           p.maxBombs++;
           map[ny][nx] = TILE.EMPTY;
         } else if (target === TILE.ITEM_RANGE) {
           p.bombRange++;
+          map[ny][nx] = TILE.EMPTY;
+        } else if (target === TILE.ITEM_SPEED) {
+          p.speed = Math.min(5, p.speed + 1); // 최대 스피드 5 제한
           map[ny][nx] = TILE.EMPTY;
         }
       }
@@ -215,7 +216,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('restartGame', () => {
-    isGameStarted = false; // 대기실 상태로 복귀
+    isGameStarted = false;
     resetGameRound();
     io.emit('returnToLobby', { selectedMap: currentMapKey, map, players });
   });
@@ -230,7 +231,7 @@ io.on('connection', (socket) => {
   });
 });
 
-// 게임 루프
+// 게임 업데이트 루프
 setInterval(() => {
   if (!isGameStarted) return;
 
@@ -256,11 +257,13 @@ setInterval(() => {
 
             explosions.push({ x: nx, y: ny, createdAt: now });
 
+            // 파괴 가능한 블록 파괴 시 아이템 드롭 확률
             if (map[ny][nx] === TILE.SOFT_BLOCK) {
               const rand = Math.random();
-              if (rand < 0.3) map[ny][nx] = TILE.ITEM_BOMB;
-              else if (rand < 0.6) map[ny][nx] = TILE.ITEM_RANGE;
-              else map[ny][nx] = TILE.EMPTY;
+              if (rand < 0.25) map[ny][nx] = TILE.ITEM_BOMB;      // 25% 확률로 물풍선
+              else if (rand < 0.50) map[ny][nx] = TILE.ITEM_RANGE; // 25% 확률로 물줄기
+              else if (rand < 0.70) map[ny][nx] = TILE.ITEM_SPEED; // 20% 확률로 스피드
+              else map[ny][nx] = TILE.EMPTY;                       // 30% 확률로 빈 공간
               break;
             }
 
